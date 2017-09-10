@@ -24,7 +24,7 @@
 //#include "lxx_net.h"
 
 #include "mxx_net_socket.h"
-#include "mxx_socket_event.h"
+//#include "mxx_socket_event.h"
 
 using namespace std;
 
@@ -41,6 +41,15 @@ int fd_listen = -1;
 
 //打印测试消息
 #define TEST_MSG printf
+
+typedef struct __st_buff_info
+{
+   char *buff;//指向一个完整的协议包缓存;
+   int buff_size;//缓存总大小
+   int data_len;//缓存数据长度
+   int total_proc_len;//已经处理数据长度
+}ST_SOCKET_BUFF_INFO;
+
 
 //客服端连接
 typedef struct {
