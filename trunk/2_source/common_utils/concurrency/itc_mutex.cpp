@@ -60,13 +60,17 @@ int ItcMutex::try_lock(double milli_second/*=0.0*/)
     if(milli_second>0.000001)
     {
        timespec ts;
+
+       //将毫秒转换为秒和纳秒
        double fractpart=0.0,intpart=0.0;
-       fractpart=modf(milli_second, &intpart);//取出整数部分和小数部分
+       fractpart=modf(milli_second/1000, &intpart);//取出整数部分和小数部分
+       long sec=(int)intpart;
+       long nsec=(int)fractpart*100000000;//纳秒
 
        ts.tv_sec=ts.tv_nsec=0;
        clock_gettime(CLOCK_REALTIME, &ts);
-       ts.tv_sec+=(int)(intpart/1000);//秒
-       ts.tv_nsec+=((int)intpart%1000)*1000000 + (int)(fractpart*1000000);//纳秒
+       ts.tv_sec += sec;//秒
+       ts.tv_nsec += nsec;//纳秒
 
        rc=pthread_mutex_timedlock(&m_mutex, &ts);
        if(0==rc) //加锁成功

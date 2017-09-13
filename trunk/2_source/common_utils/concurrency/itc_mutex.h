@@ -42,6 +42,7 @@ class ItcMutex
 #ifdef __STD_POSIX_MACRO__
      pthread_mutex_t m_mutex;
 #elif defined(__STD_BOOST_MACRO__)
+     //注:初始化时,posix不能保证金互斥量的初始化操作一定会进行,故已经要检查返回值和errno
      boost::mutex m_mutex;
 #endif
    private:  bool m_init_succ_flag;
