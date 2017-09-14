@@ -24,25 +24,60 @@
  *    2.signal/broadcast流程:
  *        ItcCond::lock()成功;->流程处理->ItcCond::signal/ItcCond::broadcast->ItcCond::unlock();
  * */
+
 #include <pthread.h>
 
 #define MXX_COND_SUCC                    (0)   //成功                  
 #define MXX_COND_FAILED                 (-1)   //没有收到条件变量
+#define MXX_COND_INIT_FAILED             (-1001) //初始化失败
+#define MXX_COND_INIT_MUTEX_FAILED       (-1002) //初始化管理互斥量失败
+#define MXX_COND_MUTEX_LOCK_FAILED      (-1003) //加锁失败
+#define MXX_COND_MUTEX_UNLOCK_FAILED    (-1004) //解锁失败
 
 //封装条件变量
+//该类可以继承ItcMutex,但为了减少依赖,就不采用继承了;
 class ItcCond
 {
    public:
+       //功能: 构造函数
        ItcCond();
+       //功能:构造函数; shared-共享标记;
        ItcCond(int shared);
+       //功能:析构函数,释放互斥量和条件变量
        virtual ~ItcCond();
       
+       //功能: 加锁; 一般在调用条件变量wait前,需要先加锁; 否则出现不可预料的行为;
+       //返回值: 0-成功; <0-失败;
        int lock(); 
+       
+       //功能: 解锁;一般在条件变量cond_wait退出后解锁
+       //返回值: 0-成功; <0-失败;
        int unlock();
+       
+       //功能:等待事件发生
+       //返回值: 0-事件发生; <0-失败;
+       //注:  调用该函数前必须确保调用该ItcCond::lock()成功加锁;
+       //     调用该函数后必须确保ItccCond::unlock()释放锁;
        int wait();
+       
+       //功能:等待事件发生,可以指定超时时间
+       //返回值: 0-事件发生; <0-失败;
+       //注:  调用该函数前必须确保调用该ItcCond::lock()成功加锁;
+       //     调用该函数后必须确保ItccCond::unlock()释放锁;
        int try_wait(double milli_second=0.0);
        
+
+             
+       //功能:唤醒一个被挂起的线程
+       //返回值: 0-成功; <0-失败;
+       //注:  调用该函数前必须确保调用该ItcCond::lock()成功加锁;
+       //     调用该函数后必须确保ItccCond::unlock()释放锁; 
        int signal();
+       
+       //功能:唤醒所有被挂起的线程
+       //返回值: 0-成功;<0-失败;
+       //注:  调用该函数前必须确保调用该ItcCond::lock()成功加锁;
+       //     调用该函数后必须确保ItccCond::unlock()释放锁;
        int broadcast();
 
    private:
@@ -60,6 +95,7 @@ class ItcCond
       bool is_init_succ() { return b_init_succ_flag;}
       //功能:初始化条件变量; shared:0-(进程内)线程共享; 1-(父子)进程间信号量;
       //返回值: 0-成功; <0-失败;
+      //注: 尚未明白条件变量怎么进程共享; 故现在仅支持线程共享;
       int init(int shared);
 };
 
