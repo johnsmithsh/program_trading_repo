@@ -1,5 +1,5 @@
 #ifndef __MXX_ITC_COND_H_
-#define __MXX_ITC_COND_H_H
+#define __MXX_ITC_COND_H_
 
 /*
  *

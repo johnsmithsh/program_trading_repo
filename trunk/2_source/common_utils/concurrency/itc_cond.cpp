@@ -53,6 +53,8 @@ int ItcCond::init(int shared)
    //errno/return???:
    //    EAGAIN 缺少初始条件变量所需的资源;
    //    ENOMEM 存在无效内存;
+   //在条件变量连续初始化会导致不可预料的结果;
+   //不过pthred_cond_destroy后,条件变量可以再次初始化;
    rc=pthread_cond_init(&m_cond, NULL);//linux thread没有实现,故cond_attr置空
    b_init_succ_flag = (0==rc);
    if(0==rc)
@@ -99,7 +101,7 @@ ItcCond::~ItcCond()
       //return:
       //    EBUSY  试图销毁一个正在使用的互斥量(如有线程被阻塞),是否支持依赖具体实现;
       //    EINVAL 条件变量无效;
-      rc=pthread_mutex_destroy(&m_mutex);
+      //rc=pthread_mutex_destroy(&m_mutex);
       b_init_succ_flag=false;
    }
 }
@@ -153,6 +155,7 @@ int ItcCond::wait()
 
    //pthread_wait调用时,必须有mutex保护,否则会造成无法预料的行为;
    //pthread_cond_wait内部会解锁，然后等待条件变量被其它线程激活
+   //在同一条件变量上pthread_cond_wait必须使用同一个条件互斥量,使用多个互斥量可能存在问题;
    //返回值:
    //   ETIMEOUT  超时
    //   EINVAL cond、mutex、timespec之一无效;
