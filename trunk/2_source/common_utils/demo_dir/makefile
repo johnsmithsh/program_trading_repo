@@ -45,8 +45,8 @@ OBJS:= $(AUTO_OBJS) $(COMMON_OBJS)
 
 #单元测试
 unittest_FLAG:=1
-unittest_TARGETS=unittest_os_path 
-unittest_SOURCES:=./unittest_os_path.cpp
+unittest_TARGETS=unittest_os_path unittest_posix_sem unittest_pthread_cond
+unittest_SOURCES:=./unittest_os_path.cpp ./unittest_posix_sem.cpp ./unittest_pthread_cond.cpp
 unittest_OBJS=$(unittest_SOURCES:.cpp=.o)
 
 ifdef unittest_FLAG
@@ -70,6 +70,10 @@ all:$(TARGET)
 
 #单元测试构建规则
 unittest_os_path:./unittest_os_path.o
+	$(GCC) -o $@ $(LIB_DIR) $(SO_LIBS)  $^   $(gtest_libs)
+unittest_posix_sem: ./unittest_posix_sem.o
+	$(GCC) -o $@ $(LIB_DIR) $(SO_LIBS)  $^   $(gtest_libs)
+unittest_pthread_cond: ./unittest_pthread_cond.o
 	$(GCC) -o $@ $(LIB_DIR) $(SO_LIBS)  $^   $(gtest_libs)
 
 #$@表示目标; $^表示所有依赖文件; $<表示第一个依赖文件
