@@ -2,6 +2,8 @@
 #define __MTRX_THREAD_BASE_H__
 
 #include <pthread.h> //POSIX标准线程头文件
+#include <string>
+#include <string.h>
 
 //定义线程服务状态,注:不是线程状态
 #define THREAD_SS_INIT      0 //初始化
@@ -27,7 +29,7 @@ class Thread_Base
     { 
        memset(m_thread_name, 0, sizeof(m_thread_name));
        if(NULL!=thread_name)
-          strncpy(m_thread_name, sizeof(m_thread_name), thread_name);
+          strncpy(m_thread_name, thread_name, sizeof(m_thread_name));
     }
     virtual ~Thread_Base();
 
@@ -42,7 +44,7 @@ class Thread_Base
     //停止线程,包含业务有关的代码
     virtual int stop();
  public://方式二
-    int bind(void *func_ptr=NULL);
+    int bind_func(void *func_ptr=NULL);
  public: //线程控制函数
        //启动线程,不处理与业务有关的代码
        int start();

@@ -56,3 +56,20 @@ void os_sig_chld(int signo)
 
    return;
 }
+
+//功能: SIGPIPE信号处理函数
+//注:
+//   进程向已经收到RST信号的套接字执行写操作,内核向该进程发送一个SIGPIPE信号;
+//   SIGPIPE默认行为是终止进程;
+void os_sig_pipe(int signo)
+{
+}
+
+//功能: SIGTERM信号处理函数
+//注:
+//   unix系统关机,init进程先给所有进程发送SIGTERM信号,等待一段时间(5~20s);(SIGTERM默认处理方式是终止进程,可以忽略该信号)
+//   然后给所有进程发送SIGKILL信号;
+//   故必须在客户中使用select或poll,服务器终止,则客户就能检测到;
+void os_sig_term(int signo);
+{
+}

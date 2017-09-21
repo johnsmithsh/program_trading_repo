@@ -1,5 +1,5 @@
 #ifndef __MXX_EPOLL_H_
-#define __MXX_EPOLL_HE_
+#define __MXX_EPOLL_H_
 
 #include <sys/epoll.h>
 
@@ -11,10 +11,11 @@
 //  [in]ev: 监听事件
 //返回值: 0-成功; <0-失败;
 int mxx_epoll_add(int fd_epoll, int fd, struct epoll_event *ev);
-
 //功能: socket加入到监听队列; events-epoll监听事件
 int mxx_epoll_add(int fd_epoll, int fd, unsigned int events);
 
+//功能: socket加入到监听队列; events-epoll监听事件
+int mxx_epoll_mod(int fd_epoll, int fd, struct epoll_event *ev);
 //功能: socket加入到监听队列; events-epoll监听事件
 int mxx_epoll_mod(int fd_epoll, int fd, unsigned int events);
 
