@@ -20,8 +20,8 @@ typedef struct _st_os_time
    int hour;//时,0~23
    int minute;//分, 0~59
    int second;//秒,, 0~59
-   int millisecond;//毫秒,0~999
-   int macroseconds;//微秒,0~999
+   int millisecond;//毫秒,0~999  1毫秒=0.001秒
+   int macroseconds;//微秒,0~999 1微妙=0.001毫秒
 }ST_OS_TIME;
 
 //定义日期时间类型
@@ -31,7 +31,7 @@ typedef struct _st_os_date_time
     ST_OS_TIME time;
 }ST_OS_DATE_TIME;
 
-
+//功能: 将struct tm时间设置为公历纪年
 inline ST_OS_DATE * tm_to_os_date(struct tm *tm, ST_OS_DATE *os_date)
 {
     if(NULL==os_date) return NULL;
@@ -39,8 +39,8 @@ inline ST_OS_DATE * tm_to_os_date(struct tm *tm, ST_OS_DATE *os_date)
     os_date->year=1900+tm->tm_year;
     os_date->month=tm->tm_mon+1;
     os_date->day=tm->tm_mday;
-    os_date->weekday = tm->tm_wday+1;
-    os_date->yearday = tm->tm_mday;
+    os_date->weekday = tm->tm_wday;
+    os_date->yearday = tm->tm_yday;
     return os_date;
 }
 
@@ -114,7 +114,7 @@ inline ST_OS_DATE_TIME* os_get_date_time(ST_OS_DATE_TIME *os_date_time)
 //获取始终的tickcount
 inline long os_get_tickcount();
 
-//获取时间
+//获取当前时间; gettiemofday会进行用户/内核态切换
 inline int os_get_timeval(struct timeval *tv)
 {
    if(NULL==tv) return 0;

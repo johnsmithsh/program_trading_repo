@@ -18,11 +18,39 @@ int os_double_split(double d, int *intpart, int *fractpart, int precision)
    return (int)__intpart;
 }
 
-int main(int argc, char **argv)
+//四舍五入
+double double_round(double d, double precision)
 {
-    int rc;
-    int intpart,fractpart;
+  int i=0;
+  while((precision=precision*10)<=1.00000) 
+    ++i;
+  return ((int)(d*pow(10, i)+0.5))/pow(10,i);
 
-    rc=os_double_split(123.4598, &intpart, &fractpart, 6);
+  //return round(d/precision)*precision;
 }
 
+//整数部分;
+int double_intpart(double d)
+{
+  double ipart=0.0;
+  modf(d, &ipart);
+  return (int)ipart;
+}
+
+//小数部分;
+double double_fractpart(double d, double precision)
+{
+  double ipart=0.0;
+  double fpart=0.0;
+  fpart=modf(d, &ipart);
+
+  return double_round(fpart, precision);
+}
+
+//浮点数比较
+int double_compare(double d1, double d2, double precision)
+{
+   if((d1-d2)>precision) return 1;
+   else if((d1-d2)<-precision) return -1;
+   return 0;
+}

@@ -25,12 +25,7 @@
 class Thread_Base
 {
  public:
-    Thread_Base(char *thread_name="") 
-    { 
-       memset(m_thread_name, 0, sizeof(m_thread_name));
-       if(NULL!=thread_name)
-          strncpy(m_thread_name, thread_name, sizeof(m_thread_name));
-    }
+    Thread_Base(const char *thread_name=""); 
     virtual ~Thread_Base();
 
  private:
@@ -38,11 +33,15 @@ class Thread_Base
     Thread_Base & operator=(const Thread_Base &a);//重载赋值运算符: 禁用赋值
  public://方式一
     virtual int init();//初始化函数
-
     virtual void run();//线程例程函数
-    virtual int terminate();//线程退出时的清理函数
+    virtual int clear();//清理资源
+
+    virtual int terminate()//线程退出时的清理函数
+    { return 0;}
     //停止线程,包含业务有关的代码
-    virtual int stop();
+    virtual int stop()
+    { return 0; }
+
  public://方式二
     int bind_func(void *func_ptr=NULL);
  public: //线程控制函数
@@ -58,7 +57,13 @@ class Thread_Base
        //int thread_continue();
  public:
     //获取线程名
-    std::string get_thread_name();   
+    std::string get_thread_name();
+    //设置线程名
+    void set_thread_name(const char *thread_name) 
+    { 
+       memset(m_thread_name, 0, sizeof(m_thread_name));
+       strncpy(m_thread_name, thread_name, sizeof(m_thread_name));
+    }
 
     //等待线程结束
     void join();   

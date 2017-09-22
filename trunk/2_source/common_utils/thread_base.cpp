@@ -17,9 +17,17 @@ void* thread_proc_posix(void *arg_ptr)
     return NULL;
 }
 
-Thread_Base::Thread_Base()
+//Thread_Base::Thread_Base()
+//{
+//    memset(&m_thread_id, 0, sizeof(m_thread_id));
+//}
+
+Thread_Base::Thread_Base(const char *thread_name/*=""*/)
 {
-    memset(&m_thread_id, 0, sizeof(m_thread_id));
+    m_thread_id=0;
+    memset(m_thread_name, 0, sizeof(m_thread_name));
+    if(NULL!=thread_name)
+      strncpy(m_thread_name, thread_name, sizeof(m_thread_name));
 }
 
 Thread_Base::~Thread_Base()
@@ -32,7 +40,12 @@ int Thread_Base::init()
     return 0;
 }
 
-//线程例程
+void Thread_Base::run()
+{
+   return;
+}
+
+//清理资源
 int Thread_Base::clear()
 {
     return 0;
@@ -66,11 +79,6 @@ int Thread_Base::start()
     pthread_attr_destroy(&attr);
 
     return 0;
-}
-
-void Thread_Base::run()
-{
-   return;
 }
 
 int Thread_Base::kill()
