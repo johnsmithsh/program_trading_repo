@@ -36,7 +36,7 @@ LIB_DIR:=
 SO_LIBS:=-lstdc++ -lpthread -lrt
 
 #常用文件
-COMMON_SOURCES:=
+COMMON_SOURCES:=../thread_base.cpp  
 COMMON_OBJS:= $(COMMON_SOURCES:.cpp=.o)
 
 
@@ -45,8 +45,8 @@ OBJS:= $(AUTO_OBJS) $(COMMON_OBJS)
 
 #单元测试
 unittest_FLAG:=1
-unittest_TARGETS=unittest_os_path unittest_posix_sem unittest_pthread_cond
-unittest_SOURCES:=./unittest_os_path.cpp ./unittest_posix_sem.cpp ./unittest_pthread_cond.cpp
+unittest_TARGETS= unittest_thread_base unittest_os_math unittest_os_time unittest_os_path unittest_posix_sem unittest_pthread_cond
+unittest_SOURCES:= ./unittest_thread_base.cpp ./unittest_os_math.cpp ../os_math.cpp ./unittest_os_time.cpp ./unittest_os_path.cpp ./unittest_posix_sem.cpp ./unittest_pthread_cond.cpp
 unittest_OBJS=$(unittest_SOURCES:.cpp=.o)
 
 ifdef unittest_FLAG
@@ -74,6 +74,12 @@ unittest_os_path:./unittest_os_path.o
 unittest_posix_sem: ./unittest_posix_sem.o
 	$(GCC) -o $@ $(LIB_DIR) $(SO_LIBS)  $^   $(gtest_libs)
 unittest_pthread_cond: ./unittest_pthread_cond.o
+	$(GCC) -o $@ $(LIB_DIR) $(SO_LIBS)  $^   $(gtest_libs)
+unittest_os_time: unittest_os_time.o
+	$(GCC) -o $@ $(LIB_DIR) $(SO_LIBS)  $^   $(gtest_libs)
+unittest_os_math: unittest_os_math.o ../os_math.o
+	$(GCC) -o $@ $(LIB_DIR) $(SO_LIBS)  $^   $(gtest_libs)
+unittest_thread_base: ./unittest_thread_base.o ../thread_base.o
 	$(GCC) -o $@ $(LIB_DIR) $(SO_LIBS)  $^   $(gtest_libs)
 
 #$@表示目标; $^表示所有依赖文件; $<表示第一个依赖文件
