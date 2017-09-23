@@ -64,7 +64,7 @@ class CSocketConnManage
 /////////////////////////////////////////////////////////////////////////////////////////
 
 //功能: 获取连接池
-CSocketConnPool * mxx_get_socket_conn_pool(int pool_id)
+inline CSocketConnPool * mxx_get_socket_conn_pool(int pool_id)
 {
    CSocketConnManage * instance=CSocketConnManage::get_instance();
    if(NULL==instance) return NULL;
@@ -72,7 +72,7 @@ CSocketConnPool * mxx_get_socket_conn_pool(int pool_id)
 }
 
 //功能; 根据sockfd找到对应的连接信息
-ST_SocketConnInfo *mxx_get_socket_conn_info(int pool_id, int so)
+inline ST_SocketConnInfo *mxx_get_socket_conn_info(int pool_id, int so)
 {
    CSocketConnPool *conn_pool=mxx_get_socket_conn_pool(pool_id);
    if(NULL==conn_pool) return NULL;

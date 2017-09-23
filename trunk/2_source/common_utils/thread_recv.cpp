@@ -332,7 +332,7 @@ int do_write_data(int so, bool *close_flag)
        {
        }
      }
-     else if(rc<snd_bin_buff->buff->cur_data_len+sizeof(ST_BIN_DATA_HEAD))//没有发送完
+     else if(rc<mxx_bin_pack_len(snd_bin_buff->buff))//没有发送完
      {
      }
    }
@@ -426,7 +426,7 @@ int do_accept_client()
 
   //添加到连接池
   CSocketConnPool *conn_pool_ptr=mxx_get_socket_conn_pool(ConnPool_RCV);
-  conn_pool_ptr->set_socketConnInfo(conn_ptr->sci_id, conn_ptr);
+  //conn_pool_ptr->set_socketConnInfo(conn_ptr->sci_id, conn_ptr);
 
   //在该level socket发送必须串行,发送同样如此
   //发送与接收可以并行,故需要发送缓存与接收缓存两个;

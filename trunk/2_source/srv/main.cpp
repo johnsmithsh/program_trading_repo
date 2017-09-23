@@ -34,9 +34,10 @@ using namespace std;
 const char g_system_version[]="0.0.0.1";
 void print_version()
 {
-   printf("name:    mxx service\n"
-          "version: %s\n"
-          "build:   %s %s\n", g_system_version, __DATE__, __TIME__);
+   printf("version information:\n"
+          "   name:    mxx service\n"
+          "   version: %s\n"
+          "   build:   %s %s\n", g_system_version, __DATE__, __TIME__);
 }
 /////////////////////////////////////////////////////////////////////////////
 

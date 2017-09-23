@@ -77,6 +77,6 @@ typedef struct _st_socket_conn_info
 
 //根据文件描述符分配一个连接id
 //没有想到很好的方案,使用文件描述符吧
-int get_conn_id(int so) { return so; }
+inline int get_conn_id(int so) { return so; }
 
 #endif

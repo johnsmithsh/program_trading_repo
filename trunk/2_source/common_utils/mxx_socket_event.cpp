@@ -1,10 +1,16 @@
 
 #include "mxx_socket_event.h"
 
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <stdlib.h>
+#include <errno.h>
+
 //收到读数据事件处理函数;
 //一次必须读完一个完整包
 //int mxx_read_event(int so, ST_SOCKET_BUFF_INFO *sock_buff_info, ST_BIN_BUFF **recv_buff )
-int int mxx_read_event(int so, ST_SOCKET_BUFF_INFO *sock_buff_info)
+int mxx_read_event(int so, ST_SOCKET_BUFF_INFO *sock_buff_info)
 {
     
     ST_BIN_DATA_HEAD bin_head;
@@ -27,13 +33,13 @@ int int mxx_read_event(int so, ST_SOCKET_BUFF_INFO *sock_buff_info)
       {
       }
 
-      if(n<sizeof(bin_head))//读取长度小于报文头长度
+      if(n<(int)sizeof(bin_head))//读取长度小于报文头长度
          return MXX_ERR_BIN_PACK_HEAD_UNCOMPLETE;
     
       if(bin_head.bin_data_len<BIN_PACK_MIN_SIZE)//报文过短
          return MXX_ERR_BIN_PACK_HEAD_TOSMALL;
       else if(bin_head.bin_data_len>BIN_PACK_MAX_SIZE)//报文过长
-         return MXX_ERR_BIN_PACK_HEAD_TOLANG;
+         return MXX_ERR_BIN_PACK_HEAD_TOLONG;
 
       data_len = bin_head.bin_data_len;
       bin_buff=mxx_alloc_bin_pack(data_len);
@@ -64,7 +70,7 @@ int int mxx_read_event(int so, ST_SOCKET_BUFF_INFO *sock_buff_info)
     int ret_code=0;//返回错误码
     bool succ_flag=false;//读取完成标记; true报文读取成功; false-报文读取失败
     int sum_count=0;//读取数据计数
-    char *buff_ptr=mxx_bin_pack_data_ptr(bin_buff);//只要缓存申请成功,则一定能找到协议数据缓存指针
+    unsigned char *buff_ptr=mxx_bin_pack_data_ptr(bin_buff);//只要缓存申请成功,则一定能找到协议数据缓存指针
     while(data_len>0)
     {
        n=recv(so, buff_ptr, data_len, 0);
@@ -72,7 +78,6 @@ int int mxx_read_event(int so, ST_SOCKET_BUFF_INFO *sock_buff_info)
        {
           if((EAGAIN==errno) || (EWOULDBLOCK==errno))//没有可用数据
           {
-             TEST_MSG("errno=EAGAIN or EWOULDBLOCK");
              if(reading_time>timeout)//超时了
              {
                 ret_code=MXX_ERR_BIN_PACK_UNCOMPLETE;
@@ -95,7 +100,7 @@ int int mxx_read_event(int so, ST_SOCKET_BUFF_INFO *sock_buff_info)
        sum_count +=n;
    }//end of while(data_len>0)
 
-   sock_buff_info->data_len - sock_buff_info->total_proc_len
+   //sock_buff_info->data_len - sock_buff_info->total_proc_len;
    if(NULL==sock_buff_info->buff)//说明是读取的是新协议包
    {
       if(data_len>0)//没有读取完整,则释放缓存 
@@ -103,7 +108,7 @@ int int mxx_read_event(int so, ST_SOCKET_BUFF_INFO *sock_buff_info)
       else//协议包读取完整
       {
         sock_buff_info->buff = bin_buff;
-        sock_buff_info->buff_size=mxx_bin_pack_getsize(bin_buff);
+        sock_buff_info->buff_size=mxx_bin_pack_size(bin_buff);
         sock_buff_info->data_len=sum_count;
         sock_buff_info->total_proc_len=sock_buff_info->data_len;
       }
@@ -120,20 +125,22 @@ int int mxx_read_event(int so, ST_SOCKET_BUFF_INFO *sock_buff_info)
 }
 
 //收到写数据事件处理函数
-int mxx_write_event(int so,ST_SOCKET_BUFF_INFO *snd_buff_info, ST_BIN_BUFF *bin_buff)
+//int mxx_write_event(int so,ST_SOCKET_BUFF_INFO *snd_buff_info, ST_BIN_BUFF *bin_buff)
+int mxx_write_event(int so,ST_SOCKET_BUFF_INFO *snd_buff_info)
 {
+   ST_BIN_BUFF *bin_buff=snd_buff_info->buff;
    if(NULL==bin_buff) return MXX_SUCC_CODE;
    //数据缓存不存在
-   if( (NULL==bin_buff->buff) || (bin_buff->data_len <= 0) ) return MXX_SUCC_CODE;
+   if( (NULL==bin_buff->bin_pack_ptr) || (bin_buff->bin_head.bin_data_len <= 0) ) return MXX_SUCC_CODE;
 
    unsigned char *pack_ptr=(unsigned char *)mxx_bin_pack_ptr(bin_buff);//获取报文头指针
-   int pack_len=mxx_bin_pack_getsize(bin_buff);//获取pack大小
+   int pack_len=mxx_bin_pack_size(bin_buff);//获取pack大小
 
    if( (NULL==pack_ptr) || (pack_len<=0))
       return MXX_SUCC_CODE;
 
    int timeout=1000;//超时间,单位:毫秒;
-   int lapse_timne=0;//已经用过的时间
+   int lapse_time=0;//已经用过的时间
    int n;
    int sum_count=0;
    int ret_code=0;
@@ -173,7 +180,7 @@ int mxx_write_event(int so,ST_SOCKET_BUFF_INFO *snd_buff_info, ST_BIN_BUFF *bin_
             ret_code=MXX_ERR_CONN_CLOSE;
             break;
          }
-         else if(EPIP==errno)//本地终端关闭socket(cliented)连接
+         else if(EPIPE==errno)//本地终端关闭socket(cliented)连接
          {
             ret_code=MXX_ERR_CONN_CLOSE;
             break;
