@@ -99,6 +99,8 @@ typedef struct {
   char recv_buff[16];   // 缓冲数据
   char snd_buff[MAX_CLIENT_BUFF_LEN];    // 发送缓存
   bool  status;                     // 状态
+  
+  //ST_SocketConnInfo conn_info;//连接信息
 
   //在该level socket发送必须串行,发送同样如此
   //发送与接收可以并行,故需要发送缓存与接收缓存两个;
@@ -152,9 +154,13 @@ client_t *get_conn_info(int so)
 
 ////////////////////////////////////////////////////////////////////////
 //构造函数
-CRecvThread::CRecvThread(char *thread_name/*="recv_thread"*/):Thread_Base(thread_name)
+CRecvThread::CRecvThread(const char *thread_name/*="recv_thread"*/):Thread_Base(thread_name)
 {
    m_server_port=0;
+}
+//析构函数
+CRecvThread::~CRecvThread()
+{
 }
 
 int CRecvThread::init()
@@ -367,7 +373,7 @@ int do_accept_client()
   }
 
   conn_ptr->sci_id=get_conn_id(conn_fd);//暂时使用文件描述符做连接id吧;
-  conn_ptr->sci_conn_tppe=SCI_CONN_TYPE_TCP;
+  conn_ptr->sci_conn_type=SCI_CONN_TYPE_TCP;
   conn_ptr->sci_recv_last_net_serial_no=0;//最近接收序号
   conn_ptr->sci_snd_last_net_serial_no=0;//最近的发送序号
   conn_ptr->sci_conn_timeout=0;//超时间设置为0,即没有超时时间

@@ -7,7 +7,7 @@
 #include "SocketConnInfo.h"
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
-//定义socket连接池,维护多个socket连接,暂时为长连接设计(短连接是否有必要???)
+//定义socket连接信息,维护多个socket连接,暂时为长连接设计(短连接是否有必要???)
 
 class CSocketConnPool //CSocketConnPool
 {
@@ -60,6 +60,8 @@ class CSocketConnManage
       //功能:销毁实例
       static int destroy_instance();
 };
+
+/////////////////////////////////////////////////////////////////////////////////////////
 
 //功能: 获取连接池
 CSocketConnPool * mxx_get_socket_conn_pool(int pool_id)

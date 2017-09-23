@@ -5,6 +5,7 @@
 
 int Thread_Base::m_thread_count=0;
 
+/////////////////////////////////////////////////////////////
 void* thread_proc_posix(void *arg_ptr)
 {
     if(NULL == arg_ptr)
@@ -16,6 +17,7 @@ void* thread_proc_posix(void *arg_ptr)
 
     return NULL;
 }
+////////////////////////////////////////////////////////////
 
 //Thread_Base::Thread_Base()
 //{

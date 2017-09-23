@@ -6,7 +6,7 @@
 class CRecvThread : public Thread_Base
 {
    public:
-     CRecvThread(char *thread_name="recv_thread");
+     CRecvThread(const char *thread_name="recv_thread");
      virtual ~CRecvThread();
    private:
      //禁用拷贝构造函数

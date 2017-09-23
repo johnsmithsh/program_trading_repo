@@ -1,10 +1,9 @@
 /*
  * 说明:
- *    实现socket连接线程池
+ *    实现socket连接信息管理
  *
  */
 
-//#include "SocketConnInfo.h"
 #include "SocketConnPool.h"
 
 #include <string.h>
@@ -84,6 +83,8 @@ int CSocketConnPool::remove_socketConnAll()
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+CSocketConnManage* CSocketConnManage::m_instance=NULL;
+
 //功能: 获取实例
 CSocketConnManage *CSocketConnManage::get_instance()
 {
@@ -116,6 +117,7 @@ CSocketConnManage::~CSocketConnManage()
 {
 }
 
+//
 CSocketConnPool * CSocketConnManage::get_net_conn_pool(int pool_id)
 {
    if( ConnPool_RCV==pool_id)

@@ -41,7 +41,7 @@ typedef struct _st_socket_conn_statics
 typedef struct _st_socket_conn_info
 {
    int sci_id;//连接id,可以是socket也可以是自定义的id
-   int sci_conn_tppe; //tcp/udp标记 0-TCP; 1-UDP
+   int sci_conn_type; //tcp/udp标记 0-TCP; 1-UDP
    
    long sci_recv_last_net_serial_no;//该连接收到的上一个报文序号(用于确定接收的数据包是否存在丢失);
    long sci_snd_last_net_serial_no; //该连接发送上一个报文序号;

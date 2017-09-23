@@ -57,7 +57,7 @@ class Thread_Base
        //int thread_continue();
  public:
     //获取线程名
-    std::string get_thread_name();
+    const char * get_thread_name() { return m_thread_name; }
     //设置线程名
     void set_thread_name(const char *thread_name) 
     { 
