@@ -37,7 +37,7 @@ void print_version()
    printf("version information:\n"
           "   name:    mxx service\n"
           "   version: %s\n"
-          "   build:   %s %s\n", g_system_version, __DATE__, __TIME__);
+          "   build:   %s %s\n\n", g_system_version, __DATE__, __TIME__);
 }
 /////////////////////////////////////////////////////////////////////////////
 

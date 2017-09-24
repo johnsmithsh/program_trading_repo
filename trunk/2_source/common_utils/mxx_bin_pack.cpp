@@ -3,6 +3,14 @@
 #include <string.h>
 #include <stdlib.h>
 
+//初始化BIN_PACK数据,数据缓存中数据置空; BIN_PACK使用数据长度设置为
+int mxx_bin_pack_init(ST_BIN_BUFF *bin_buff)
+{
+    if(NULL==bin_buff) return 0;
+    bin_buff->len=sizeof(ST_BIN_DATA_HEAD);
+    bin_buff->bin_head.bin_data_len = 0;
+}
+
 //功能:分配一个二进制协议缓存,
 //参数: 
 //   [in]data_len:指bin_pack协议中数据的长度,不包括报文头;
@@ -21,10 +29,14 @@ ST_BIN_BUFF *mxx_alloc_bin_pack(int data_len)
     memset(bin_ptr, 0, pack_size);
     
     ST_BIN_BUFF * bin_buff_ptr=(ST_BIN_BUFF *)bin_ptr;
-    bin_buff_ptr->size=data_len+sizeof(ST_BIN_DATA_HEAD);//设置缓存大小
-    bin_buff_ptr->len=0;//当前没有数据,故长度置为0;
+    bin_buff_ptr->size= data_len+sizeof(ST_BIN_DATA_HEAD); //data_len+sizeof(ST_BIN_DATA_HEAD);//设置缓存大小
     bin_buff_ptr->bin_pack_ptr=(BIN_PACK_Ptr)(&(bin_buff_ptr->bin_head));//从bin_buff_ptr->len之后就是bin_pack数据包
-    bin_buff_ptr->bin_head.bin_data_len=0;//设置报文头
+    
+    //bin_buff_ptr->len=sizeof(ST_BIN_DATA_HEAD);//报文头已经占据了若干字节;
+    //bin_buff_ptr->bin_head.bin_data_len=0;//设置报文头
+    mxx_bin_pack_init(bin_buff_ptr);
+
+    return bin_buff_ptr;
 }
 
 //功能: 释放二进制协议缓存
@@ -43,10 +55,11 @@ void mxx_bin_pack_clear(ST_BIN_BUFF *bin_buff)
    //bin_buff_ptr->bin_pack_buff_size=data_len+sizeof(ST_BIN_DATA_HEAD);//设置缓存大小
    //bin_buff_ptr->bin_pack_ptr=(BIN_PACK_Ptr)&(bin_buff_ptr->bin_pack_data_len);//从bin_buff_ptr->data_len之后就是bin_pack数据包
    //bin_buff_ptr->bin_pack_data_len.bin_data_len=0;//数据长度
-   bin_buff->len=0;//当前缓存中实际数据长度
+   //bin_buff->len=0;//当前缓存中实际数据长度
 
-   //bin_buff->bin_head.bin_data_len=0;//数据长度
-   memset(bin_buff->bin_pack_ptr, 0, data_len);
+   bin_buff->bin_head.bin_data_len=0;//数据长度
+   memset(bin_buff->bin_pack_ptr+sizeof(ST_BIN_DATA_HEAD), 0, data_len);
+   mxx_bin_pack_init(bin_buff);
    return ;
 }
 
@@ -65,6 +78,7 @@ int mxx_bin_pack_append(ST_BIN_BUFF *bin_buff, unsigned char *data_buff, int dat
   unsigned char *ptr=bin_buff->bin_pack_ptr + sizeof(bin_buff->bin_head) + bin_buff->bin_head.bin_data_len;
    memcpy(ptr, data_buff, data_len);
    bin_buff->bin_head.bin_data_len += data_len;//更改长度
+   bin_buff->len = bin_buff->bin_head.bin_data_len+sizeof(ST_BIN_DATA_HEAD);
    return data_len;
 }
 

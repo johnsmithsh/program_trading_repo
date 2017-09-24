@@ -6,7 +6,7 @@
  *    该协议包纯粹是为了接收方便,故报文头只包含一个数据包长度,不包含任何业务信息和控制信息;
  *    一个报文中可以包含多个业务数据包; 业务数据包的组装与解析全部由业务层负责,不在此处描述;
  *    由于报文中全是二进制数据,暂时就把这个协议包叫做binary pack吧,缩写BIN_PACK;
- * 报文格式: 长度+数据;
+ * 报文格式: BIN_HEAD+BIN_BODY=长度+数据;
  * 使用方式:
  *     
  * 注: 该数据包有过多大,不宜申请过多,每个socket连接申请一个到两个即可;
@@ -39,11 +39,13 @@ typedef struct __st_bin_pack_len
 //
 typedef struct __st_socket_pack
 {
-   int size;//bin_pack缓存大小(包括报文头)
-   int len;//bin_pack缓存实际数据长度(含报文头),用于socket接收校验包完整性
-   unsigned char *bin_pack_ptr;//数据缓存指针,指向bin_head地址; bin_head与bin_body是连续的, 这使用了一个c语言的小技巧;
+   int size;//bin_pack缓存大小=BIN_HEAD大小+数据区域大小;(即包括报文头,数据区域大小; 不包含ST_BIN_BUFF的size、len等其他字段)
+   int len;//bin_pack已使用内存数=报文头大小+数据区域数据长度;  //(含报文头),用于socket接收校验包完整性
+   unsigned char *bin_pack_ptr;//BIN_PACK指针,指向bin_head地址; bin_head与bin_body是连续的, 这使用了一个c语言的小技巧;
+   
+   //以下才是BIN_PACK真正的缓存区域
    ST_BIN_DATA_HEAD bin_head;//报文头,从此处开始才是真正的二进制协议报文数据;
-   //bin_body 变长报文数据缓存...
+   //bin_body区域 变长报文数据缓存...
 }ST_BIN_BUFF;
 
 //功能: 分配一个ST_BIN_BUFF缓存
@@ -62,7 +64,7 @@ void mxx_bin_pack_clear(ST_BIN_BUFF *bin_buff);
 //功能: 向缓存添加数据
 int mxx_bin_pack_append(ST_BIN_BUFF *bin_buff, unsigned char *data_buff, int data_len);
 
-//功能:  获取缓冲区可用长度
+//功能:  获取缓冲区可用长度,不包括报文头
 int mxx_bin_pack_get_avail_size(ST_BIN_BUFF *bin_buff);
 
 //功能: 判断缓存区是否已经满了;
