@@ -7,11 +7,16 @@
 
 #include "mxx_bin_pack.h"
 #include "mxx_net_socket.h"
+#include <string.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <errno.h>
 
 #define OUT_INFO_MSG(format,...) printf(format"\n", ##__VA_ARGS__)
 
-char g_server_ip[16]={0};
-int g_server_port=0;
+char g_server_ip[16]="127.0.0.1";
+int g_server_port=12345;
 
 //从标准输入获取一行;返回读取的字符数,<0-失败;
 int read_line(char *buff, int size)
@@ -35,19 +40,19 @@ int main(int argc, char ** argv)
    if(NULL==bin_pack)
    {
       OUT_INFO_MSG("申请bin pack缓存失败!");
-      exit(2);
+      exit(EXIT_FAILURE);
    }
 
    so=mxx_socket_connect(g_server_ip, g_server_port);//连接到指定客户端
    if(so<0)
    {
-      if(NULL1=bin_pack)
+      if(NULL!=bin_pack)
       {
          mxx_free_bin_pack(bin_pack);
          bin_pack=NULL;
       }
-      OUT_INFO_MSG("连接ip:port=[%s:%d]!", g_server_ip, g_server_port);
-      exit(3);
+      OUT_INFO_MSG("Error:连接ip:port=[%s:%d]! rc=[%d], errno=[%d], strerr=[%s]", g_server_ip, g_server_port, errno, strerror(errno));
+      exit(EXIT_FAILURE);
    }
    
    for(;;)
@@ -61,26 +66,26 @@ int main(int argc, char ** argv)
          continue;
 
       mxx_bin_pack_clear(bin_pack);
-      mxx_bin_pack_append(bin_pack, line_buff, rc);
+      mxx_bin_pack_append(bin_pack, (unsigned char *)line_buff, rc);
 
-      unsignec char * ptr=mxx_bin_pack_ptr(bin_pack);
+      unsigned char * ptr=mxx_bin_pack_ptr(bin_pack);
       int len=mxx_bin_pack_len(bin_pack);
-      rc=mxx_socket_send(so, ptr, len);
+      rc=mxx_socket_send(so, (const char *)ptr, len);
       if(rc<0)
       {
          OUT_INFO_MSG("Error: 发送失败!rc=[%d]", rc);
          break;
       }
-      else if(rc==len)
+      else if(rc!=len)
       {
          OUT_INFO_MSG("Error: 发送不完整,rc=[%d] != [%d]", rc, len);
       }
    }
 
-   if(NULL==bin_buff)
+   if(NULL==bin_pack)
    {
-      mxx_free_bin_pack(bin_buff);
-      bin_buff=NULL;
+      mxx_free_bin_pack(bin_pack);
+      bin_pack=NULL;
    }
    if(so > 0)
    {

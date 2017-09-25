@@ -31,11 +31,11 @@ SFIX:=.c .C .cpp .cc .CPP .c++ .cp .cxx
 
 #头文件路径
 INCLUDES:= -I./ -I../    \
- -I../common_utils/      \
- -I../common_utils/log/  \
- -I../common_utils/netsocket \
- -I../common_utils/concurrency \
- -I../net_transfer_protocol 
+ -I../../common_utils/      \
+ -I../../common_utils/log/  \
+ -I../../common_utils/netsocket \
+ -I../../common_utils/concurrency \
+ -I../../net_transfer_protocol 
 #动态库路径
 LIB_DIR:=-L./
 #动态库
@@ -46,23 +46,28 @@ STATIC_LIBS:=
 #使用log4cpp记录日志
 OpenSrc_log4cpp_flag=1
 ifdef OpenSrc_log4cpp_flag
- INCLUDES+= -I../common_utils/log/include
- LIB_DIR += -L../common_utils/log/linux
+ INCLUDES+= -I../../common_utils/log/include
+ LIB_DIR += -L../../common_utils/log/linux
  SO_LIBS+= -llog4cpp
  #STATIC_LIBS += #没有静态库
 endif
 
 #常用文件
-COMMON_SOURCES:= ../common_utils/concurrency/itc_mutex.cpp \
-                 ../net_transfer_protocol/SocketConnPool.cpp \
-                 ../common_utils/mxx_bin_pack.cpp ../common_utils/mxx_socket_event.cpp \
-                 ../common_utils/mxx_epoll.cpp \
-  ../common_utils/thread_recv.cpp ../common_utils/thread_base.cpp ../common_utils/log/LogFileManage.cpp ./main.cpp ../common_utils/netsocket/mxx_net_socket.cpp
+COMMON_SOURCES:= ../../common_utils/concurrency/itc_mutex.cpp \
+                 ../../net_transfer_protocol/SocketConnPool.cpp \
+                 ../../common_utils/mxx_bin_pack.cpp ../../common_utils/mxx_socket_event.cpp \
+                 ../../common_utils/mxx_epoll.cpp \
+                 ../../common_utils/thread_recv.cpp ../../common_utils/thread_base.cpp \
+                ../../common_utils/log/LogFileManage.cpp \
+                ../../common_utils/netsocket/mxx_net_socket.cpp
 COMMON_OBJS:= $(COMMON_SOURCES:.cpp=.o)
 
+#工程文件
+PRJ_SRCS=./client.cpp
+PRJ_OBJS:=$(PRJ_SRCS:.cpp=.o)
 
-SOURCES:=$(COMMON_SOURCES) $(AUTO_SOURCES)
-OBJS:= $(AUTO_OBJS) $(COMMON_OBJS)
+SOURCES:=$(COMMON_SOURCES) $(AUTO_SOURCES) $(PRJ_SRCS)
+OBJS:= $(AUTO_OBJS) $(COMMON_OBJS) $(PRJ_OBJS)
 
 #-rpath指定运行时动态库搜索路径,多个目录使用分号分割，如-Wl,-rpath,dir1:dir2:...:dirN
 #      $ORIGING表示程序所在目录,如-wl,-rpath $ORIGING
@@ -81,14 +86,15 @@ else
  LINK_FLAG+=
 endif
 
-TARGET:=bu_demo
+TARGET:=bin_pack_client
 #输出路径
 OUTPUT_DIR:=./bin
 all:clean $(TARGET)
 
 #构建规则
-bu_demo:$(OBJS)
-	$(GCC) -o $@ $(LINK_FLAG) $(LIB_DIR) $(SO_LIBS)  $^  
+bin_pack_client:$(OBJS)
+	$(GCC) -o $@ $(LINK_FLAG) $(LIB_DIR) $(SO_LIBS)  $^ 
+	mkdir -p ./bin 
 	rm -f ./bin/$@ 
 	cp $@ bin/
 
@@ -110,6 +116,9 @@ bu_demo:$(OBJS)
 $(COMMON_OBJS): %.o:%.cpp
 	$(GCC) -o $@ $(DCPPFLAGS) $(CFLAGS) $(INCLUDES) $<
 
+$(PRJ_OBJS): %.o:%.cpp
+	$(GCC) -o $@ $(DCPPFLAGS) $(CFLAGS) $(INCLUDES) $<
+
 %.o: %.c
 	$(CC) ${DCPPFLAGS}  ${CFLAGS}   ${INCLUDES} $<
 %.o: %.C
@@ -126,25 +135,6 @@ $(COMMON_OBJS): %.o:%.cpp
 	${CXX}     ${DCPPFLAGS}    ${CXXFLAGS}    ${INCLUDES}   $<
 %.o: %.cxx
 	${CXX}     ${DCPPFLAGS}    ${CXXFLAGS}    ${INCLUDES}   $<
-
-
-
-#单元测试构建规则
-#unittest:$(OBJS) $(unittest_OBJS)
-unittest:$(OBJS) $(unittest_TARGETS)
-#	$(GCC) -o $@ $(LIB_DIR) $(SO_LIBS) $(unittest_LIB_DIR) $(unit_test_LIB_DIR) $(LINK_FLAGS)  $(OBJS) $(unittest_OBJS) unit_test/pub_lib/gtest/linux64/libgtest.a
-	@echo "build unit test finished!"
-
-./unit_test/unittest_mem_buff:./unit_test/unittest_mem_buff.o 
-	$(GCC) -o $@ $(LIB_DIR) $(SO_LIBS) $(unittest_LIB_DIR) $(unit_test_LIB_DIR) $(unittest_LIBS) $(LINK_FLAGS) $< unit_test/pub_lib/gtest/linux64/libgtest.a  
-#unit_test/pub_lib/gtest/linux64/libgtest.a
-
-./unit_test/unittest_dataMemberDescriber: ./unit_test/unittest_dataMemberDescriber.o dataMemberDescriber.o
-	$(GCC) -o $@ $(LIB_DIR) $(SO_LIBS) $(unittest_LIB_DIR) $(unit_test_LIB_DIR) $(unittest_LIBS) $(LINK_FLAGS) $^ unit_test/pub_lib/gtest/linux64/libgtest.a 
-
-$(unittest_OBJS): %.o:%.cpp
-	$(GCC) -o $@ $(DCPPFLAGS) $(CFLAGS) $(INCLUDES) $(unittest_INCLUDES) $<
-
 
 clean:
 	rm -f $(OBJS)  *.o

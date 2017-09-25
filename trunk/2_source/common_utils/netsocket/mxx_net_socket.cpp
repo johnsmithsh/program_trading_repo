@@ -1,13 +1,5 @@
 #include "mxx_net_socket.h"
-#include <sys/socket.h>
 #include <sys/epoll.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <stdio.h>
-#include <errno.h>
-#include <iostream>
 
 //#include <string.h>
 //#include <stdlib.h>
@@ -20,13 +12,12 @@
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <error.h>
 
 #include <string.h>
 #include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
-
+#include <errno.h>
 /*
  * 功能: 创建一个socket端口; 如果指定ip与端口,则socket绑定ip与端口; 否则只是创建,不做绑定;
  * 参数:
@@ -274,8 +265,9 @@ int mxx_socket_recv(int sockfd, char *buffer, int buffsize, int *data_len, int r
 
    return 0;
 }
+
 //使用socket发送数据 tcp
-int mxx_socket_send(int sockfd, const char* buffer, size_t buflen) 
+int mxx_socket_send(int sockfd, const char* buffer, int buflen) 
 {
   ssize_t rc;
   size_t total = buflen;
