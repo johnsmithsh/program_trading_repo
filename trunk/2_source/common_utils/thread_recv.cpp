@@ -1,9 +1,9 @@
 /*
- * myepoll.cpp
+ * 接收线程
  *
- * Created on: 2013-06-03
- * Author: liuxiaoxian
- * 提高ms并发度调研：把客户端发来的数据发过去
+ * Created on: 
+ * Author: 
+ * 
  */
 
 #include "log.h" //日志
@@ -96,19 +96,19 @@ typedef struct {
   char host[MAX_IP_LEN];           // IP地址
   int port;                         // 端口
   int len;                          // 缓冲区数据大小
-  char recv_buff[16];   // 缓冲数据
-  char snd_buff[MAX_CLIENT_BUFF_LEN];    // 发送缓存
+  //char recv_buff[16];   // 缓冲数据
+  //char snd_buff[MAX_CLIENT_BUFF_LEN];    // 发送缓存
   bool  status;                     // 状态
   
-  //ST_SocketConnInfo conn_info;//连接信息
+  ST_SocketConnInfo conn_info;//连接信息
 
   //在该level socket发送必须串行,发送同样如此
   //发送与接收可以并行,故需要发送缓存与接收缓存两个;
-  ST_SOCKET_BUFF_INFO recv_buff_info;//接收缓存info
-  ST_SOCKET_BUFF_INFO snd_buff_info; //发送缓存info
+  //ST_SOCKET_BUFF_INFO recv_buff_info;//接收缓存info
+  //ST_SOCKET_BUFF_INFO snd_buff_info; //发送缓存info
 } client_t;
 
-client_t *ptr_cli = NULL;
+client_t *g_client_ptr = NULL; //客户端连接
 
 //功能:申请一个空闲网络连接
 client_t *alloc_conn_info()
@@ -117,11 +117,11 @@ client_t *alloc_conn_info()
    client_t *ptr=NULL;
    for(i=0; i<MAX_CLIENT_SIZE; i++)
    {
-     ptr=ptr_cli+i;
+     ptr=g_client_ptr+i;
      if(ptr->status)
         continue;
      
-     memset(&ptr_cli[i], 0, sizeof(client_t));
+     memset(ptr, 0, sizeof(client_t));
      ptr->status=true;
      return ptr;
    }
@@ -145,7 +145,7 @@ client_t *get_conn_info(int so)
    client_t *ptr=NULL;
    for(i=0; i<MAX_CLIENT_SIZE; i++)
    {
-     ptr=ptr_cli+i;
+     ptr=g_client_ptr+i;
      if( (ptr->fd==so) && (ptr->status) )
         return ptr;
    }
@@ -362,8 +362,8 @@ int do_accept_client()
   memset(&conn_info, 0, sizeof(conn_info));
 
 
-  ST_SocketConnInfo *conn_ptr=&conn_info; //conn_ptr=alloc_conn_info();
-  if(NULL==conn_ptr)//无可用连接
+  ST_SocketConnInfo *conn_info_ptr=&conn_info; //conn_ptr=alloc_conn_info();
+  if(NULL==conn_info_ptr)//无可用连接
   {
      //此时连接尚未增加到监听,直接关闭即可;
      close(conn_fd);//注意:需要关闭连接
@@ -372,14 +372,14 @@ int do_accept_client()
      return -2;
   }
 
-  conn_ptr->sci_id=get_conn_id(conn_fd);//暂时使用文件描述符做连接id吧;
-  conn_ptr->sci_conn_type=SCI_CONN_TYPE_TCP;
-  conn_ptr->sci_recv_last_net_serial_no=0;//最近接收序号
-  conn_ptr->sci_snd_last_net_serial_no=0;//最近的发送序号
-  conn_ptr->sci_conn_timeout=0;//超时间设置为0,即没有超时时间
+  conn_info_ptr->sci_id=get_conn_id(conn_fd);//暂时使用文件描述符做连接id吧;
+  conn_info_ptr->sci_conn_type=SCI_CONN_TYPE_TCP;
+  conn_info_ptr->sci_recv_last_net_serial_no=0;//最近接收序号
+  conn_info_ptr->sci_snd_last_net_serial_no=0;//最近的发送序号
+  conn_info_ptr->sci_conn_timeout=0;//超时间设置为0,即没有超时时间
   
-  conn_ptr->sci_sock_fd = conn_fd;//文件描述符
-  conn_ptr->sci_cs_flag=SCI_CS_FLAG_SERVER;//作为服务器
+  conn_info_ptr->sci_sock_fd = conn_fd;//文件描述符
+  conn_info_ptr->sci_cs_flag=SCI_CS_FLAG_SERVER;//作为服务器
   
   //获取socket本地ip和port、远程ip和port...
   struct sockaddr_in addr;
@@ -392,8 +392,8 @@ int do_accept_client()
      ERROR_MSG("do_accept_client: getpeername() failed, rc=[%d], errno=[%d], strerr=[%s]", rc, errno, strerror(errno));
      return -2;
   }
-  inet_ntop(addr.sin_family, &addr.sin_addr, (char*)conn_ptr->sci_remote_ip, sizeof(conn_ptr->sci_remote_ip));//对方ip
-  conn_ptr->sci_remote_port = ntohs(addr.sin_port);
+  inet_ntop(addr.sin_family, &addr.sin_addr, (char*)conn_info_ptr->sci_remote_ip, sizeof(conn_info_ptr->sci_remote_ip));//对方ip
+  conn_info_ptr->sci_remote_port = ntohs(addr.sin_port);
   
   addr_len=sizeof(addr);
   memset(&addr, 0, sizeof(addr));
@@ -403,16 +403,16 @@ int do_accept_client()
      ERROR_MSG("do_accept_client: getsockname() failed, rc=[%d], errno=[%d], strerr=[%s]", rc, errno, strerror(errno));
      return -2;
   }
-  inet_ntop(addr.sin_family, &addr.sin_addr, (char *)conn_ptr->sci_local_ip, sizeof(conn_ptr->sci_local_ip));//对方ip
-  conn_ptr->sci_local_port = ntohs(addr.sin_port);
+  inet_ntop(addr.sin_family, &addr.sin_addr, (char *)conn_info_ptr->sci_local_ip, sizeof(conn_info_ptr->sci_local_ip));//对方ip
+  conn_info_ptr->sci_local_port = ntohs(addr.sin_port);
 
   //初始化时间...
-  os_get_timeval(&conn_ptr->sci_start_time);//设置连接建立时间
-  conn_ptr->sci_last_recv_time = conn_ptr->sci_start_time;//上次收到协议包时间
-  conn_ptr->sci_last_snd_time = conn_ptr->sci_start_time;//上次发送协议包时间
+  os_get_timeval(&conn_info_ptr->sci_start_time);//设置连接建立时间
+  conn_info_ptr->sci_last_recv_time = conn_info_ptr->sci_start_time;//上次收到协议包时间
+  conn_info_ptr->sci_last_snd_time = conn_info_ptr->sci_start_time;//上次发送协议包时间
 
   //设置统计信息...
-  ST_SocketConnStatics *conn_static_ptr=&conn_ptr->sci_conn_statics;//获取统计信息指针
+  ST_SocketConnStatics *conn_static_ptr=&conn_info_ptr->sci_conn_statics;//获取统计信息指针
   conn_static_ptr->scs_recv_netpack_count=conn_static_ptr->scs_snd_netpack_count=0;//协议包接收计数与协议包发送计数;
   conn_static_ptr->scs_avg_load=0;//队列平均负载;
   conn_static_ptr->scs_max_load=0;//队列最大负载;
@@ -461,7 +461,7 @@ int do_accept_client()
   // INFO_MSG("do_accept_client success[%s:%d]",
   //          inet_ntoa(cliaddr.sin_addr), cliaddr.sin_port);
   
-  return conn_ptr->sci_sock_fd;
+  return conn_info_ptr->sci_sock_fd;
 }
 
 //功能:连接被关闭处理事件
@@ -556,7 +556,7 @@ int CRecvThread::recv_routine()
   printf("thread_recv: success to add server socket to epoll monitor!\n");
 
 
-  ptr_cli = new client_t[MAX_CLIENT_SIZE];//客户端连接
+  g_client_ptr = new client_t[MAX_CLIENT_SIZE];//客户端连接
 
   struct epoll_event events[MAX_EPOLL_SIZE];//监听最大事件数量
   int epoll_sig_interrpt_count=0;//epoll被signal中断次数
@@ -753,10 +753,10 @@ int CRecvThread::recv_routine()
   //for任何一个连接, 关闭连接
 
   //释放内存
-  if(NULL!=ptr_cli)
+  if(NULL!=g_client_ptr)
   { 
-     delete [] ptr_cli;
-     ptr_cli=NULL;
+     delete [] g_client_ptr;
+     g_client_ptr=NULL;
   }
 
   //关闭各个线程

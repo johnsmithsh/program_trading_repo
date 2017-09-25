@@ -304,7 +304,7 @@ int mxx_socket_send(int sockfd, const char* buffer, size_t buflen)
     p += rc;
   }
   
-  return rc;
+  return (buflen-total);
 }
 
 //功能: 连接tcp服务器; udp暂时还不支持

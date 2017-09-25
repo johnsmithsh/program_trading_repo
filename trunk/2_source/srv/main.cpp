@@ -81,8 +81,14 @@ int main(int argc, char **argv)
   //启动客户端接收线程
   INFO_MSG("start thread [recv_client_request]...");
   g_recv_thread.set_thread_name("recv_client_request");
+  g_recv_thread.start();//启动线程
   INFO_MSG("succed to start thread");
   
+  while(1)
+  {
+     sleep(2);
+  }
+
   //关闭各个线程
   INFO_MSG("stop all thread...");
   INFO_MSG("end of stop thread");
