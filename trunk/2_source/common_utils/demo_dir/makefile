@@ -30,13 +30,13 @@ SFIX:=.c .C .cpp .cc .CPP .c++ .cp .cxx
 
 
 #头文件路径
-INCLUDES:= -I./ -I../
+INCLUDES:= -I./ -I../ -I../concurrency
 #动态库路径
 LIB_DIR:=
 SO_LIBS:=-lstdc++ -lpthread -lrt
 
 #常用文件
-COMMON_SOURCES:=../thread_base.cpp ../mxx_bin_pack.cpp
+COMMON_SOURCES:= ../concurrency/ipc_shm.cpp ../thread_base.cpp ../mxx_bin_pack.cpp
 COMMON_OBJS:= $(COMMON_SOURCES:.cpp=.o)
 
 
@@ -45,8 +45,8 @@ OBJS:= $(AUTO_OBJS) $(COMMON_OBJS)
 
 #单元测试
 unittest_FLAG:=1
-unittest_TARGETS= unittest_mxx_bin_pack unittest_thread_base unittest_os_math unittest_os_time unittest_os_path unittest_posix_sem unittest_pthread_cond
-unittest_SOURCES:= ./unittest_mxx_bin_pack.cpp ./unittest_thread_base.cpp ./unittest_os_math.cpp ../os_math.cpp ./unittest_os_time.cpp ./unittest_os_path.cpp ./unittest_posix_sem.cpp ./unittest_pthread_cond.cpp
+unittest_TARGETS= unittest_ipc_shm unittest_mxx_bin_pack unittest_thread_base unittest_os_math unittest_os_time unittest_os_path unittest_posix_sem unittest_pthread_cond
+unittest_SOURCES:= ./unittest_ipc_shm.cpp ./unittest_mxx_bin_pack.cpp ./unittest_thread_base.cpp ./unittest_os_math.cpp ../os_math.cpp ./unittest_os_time.cpp ./unittest_os_path.cpp ./unittest_posix_sem.cpp ./unittest_pthread_cond.cpp
 unittest_OBJS=$(unittest_SOURCES:.cpp=.o)
 
 ifdef unittest_FLAG
@@ -82,6 +82,8 @@ unittest_os_math: unittest_os_math.o ../os_math.o
 unittest_thread_base: ./unittest_thread_base.o ../thread_base.o
 	$(GCC) -o $@ $(LIB_DIR) $(SO_LIBS)  $^   $(gtest_libs)
 unittest_mxx_bin_pack: ./unittest_mxx_bin_pack.o ../mxx_bin_pack.o
+	$(GCC) -o $@ $(LIB_DIR) $(SO_LIBS)  $^   $(gtest_libs)
+unittest_ipc_shm: ../concurrency/ipc_shm.o unittest_ipc_shm.o
 	$(GCC) -o $@ $(LIB_DIR) $(SO_LIBS)  $^   $(gtest_libs)
 #$@表示目标; $^表示所有依赖文件; $<表示第一个依赖文件
 #模式规则: 
