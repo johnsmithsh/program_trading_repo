@@ -57,12 +57,15 @@ COMMON_SOURCES:= ../common_utils/concurrency/itc_mutex.cpp \
                  ../net_transfer_protocol/SocketConnPool.cpp \
                  ../common_utils/mxx_bin_pack.cpp ../common_utils/mxx_socket_event.cpp \
                  ../common_utils/mxx_epoll.cpp \
-  ../common_utils/thread_recv.cpp ../common_utils/thread_base.cpp ../common_utils/log/LogFileManage.cpp ./main.cpp ../common_utils/netsocket/mxx_net_socket.cpp
+  ../common_utils/thread_recv.cpp ../common_utils/thread_base.cpp ../common_utils/log/LogFileManage.cpp ../common_utils/netsocket/mxx_net_socket.cpp
 COMMON_OBJS:= $(COMMON_SOURCES:.cpp=.o)
 
+#工程文件
+PRJ_SOURCES=./ctrl_center_thread.cpp ./main.cpp
+PRJ_OBJS=$(PRJ_SOURCES:.cpp=.o)
 
-SOURCES:=$(COMMON_SOURCES) $(AUTO_SOURCES)
-OBJS:= $(AUTO_OBJS) $(COMMON_OBJS)
+SOURCES:=$(COMMON_SOURCES) $(AUTO_SOURCES) $(PRJ_SOURCES)
+OBJS:= $(PRJ_OBJS) $(AUTO_OBJS) $(COMMON_OBJS)
 
 #-rpath指定运行时动态库搜索路径,多个目录使用分号分割，如-Wl,-rpath,dir1:dir2:...:dirN
 #      $ORIGING表示程序所在目录,如-wl,-rpath $ORIGING
@@ -126,25 +129,6 @@ $(COMMON_OBJS): %.o:%.cpp
 	${CXX}     ${DCPPFLAGS}    ${CXXFLAGS}    ${INCLUDES}   $<
 %.o: %.cxx
 	${CXX}     ${DCPPFLAGS}    ${CXXFLAGS}    ${INCLUDES}   $<
-
-
-
-#单元测试构建规则
-#unittest:$(OBJS) $(unittest_OBJS)
-unittest:$(OBJS) $(unittest_TARGETS)
-#	$(GCC) -o $@ $(LIB_DIR) $(SO_LIBS) $(unittest_LIB_DIR) $(unit_test_LIB_DIR) $(LINK_FLAGS)  $(OBJS) $(unittest_OBJS) unit_test/pub_lib/gtest/linux64/libgtest.a
-	@echo "build unit test finished!"
-
-./unit_test/unittest_mem_buff:./unit_test/unittest_mem_buff.o 
-	$(GCC) -o $@ $(LIB_DIR) $(SO_LIBS) $(unittest_LIB_DIR) $(unit_test_LIB_DIR) $(unittest_LIBS) $(LINK_FLAGS) $< unit_test/pub_lib/gtest/linux64/libgtest.a  
-#unit_test/pub_lib/gtest/linux64/libgtest.a
-
-./unit_test/unittest_dataMemberDescriber: ./unit_test/unittest_dataMemberDescriber.o dataMemberDescriber.o
-	$(GCC) -o $@ $(LIB_DIR) $(SO_LIBS) $(unittest_LIB_DIR) $(unit_test_LIB_DIR) $(unittest_LIBS) $(LINK_FLAGS) $^ unit_test/pub_lib/gtest/linux64/libgtest.a 
-
-$(unittest_OBJS): %.o:%.cpp
-	$(GCC) -o $@ $(DCPPFLAGS) $(CFLAGS) $(INCLUDES) $(unittest_INCLUDES) $<
-
 
 clean:
 	rm -f $(OBJS)  *.o

@@ -1,9 +1,8 @@
 /*
- * myepoll.cpp
+ * main.cpp
  *
- * Created on: 2013-06-03
- * Author: liuxiaoxian
- * 提高ms并发度调研：把客户端发来的数据发过去
+ * GPL 
+ *
  */
 
 //#include <sys/socket.h>
@@ -26,6 +25,7 @@
 #include "mxx_socket_event.h"
 
 #include "thread_recv.h"
+#include "ctrl_center_thread.h"
 
 using namespace std;
 
@@ -42,6 +42,8 @@ void print_version()
 /////////////////////////////////////////////////////////////////////////////
 
 CRecvThread g_recv_thread;//接收线程
+CCtrlCenterThread g_cc_thread("ctrl_center_thread");//控制中心线程,处理收到的数据
+
 int main(int argc, char **argv) 
 {
   int rc;
@@ -82,8 +84,14 @@ int main(int argc, char **argv)
   INFO_MSG("start thread [recv_client_request]...");
   g_recv_thread.set_thread_name("recv_client_request");
   g_recv_thread.start();//启动线程
-  INFO_MSG("succed to start thread");
-  
+  INFO_MSG("succed to start thread [%s]", g_recv_thread.get_thread_name());
+ 
+  //启动数据处理线程
+  INFO_MSG("start thread [ctrl_center_thread...]");
+  g_cc_thread.set_thread_name("ctrl_center_thread");
+  g_cc_thread.start();
+  INFO_MSG("succ to start thread [%s]", g_cc_thread.get_thread_name());
+ 
   while(1)
   {
      sleep(2);
