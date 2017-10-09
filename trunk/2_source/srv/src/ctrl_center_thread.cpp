@@ -71,6 +71,7 @@ int CCtrlCenterThread::handle_routine()
      bin_buff=recv_que_pop();
      if(NULL==bin_buff)
      {
+        TEST_MSG("缓存队列为空\n");
         sleep(3);
         continue;
      }

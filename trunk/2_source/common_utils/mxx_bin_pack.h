@@ -17,7 +17,7 @@
 //二进制数据包最大长度,即每次socket连接传输的数据不能超过该数值
 // 如果业务传输数据超过该数字,则业务层必须自己拆分;
 #define BIN_PACK_MAX_SIZE  (10240) //10KB, BIN_PACK最大值
-#define BIN_PACK_MIN_SIZE  (32)  //考虑到业务包肯定有报文头,所以数据包肯定至少存在一个报文头,否则没有意义; 暂时设置为32,具体数据以后修改;
+#define BIN_PACK_MIN_SIZE  (1)  //考虑到业务包肯定有报文头,所以数据包肯定至少存在一个报文头,否则没有意义; 暂时设置为32,具体数据以后修改;
 
 typedef unsigned char* BIN_PACK_Ptr; //定义二进制协议包 
 

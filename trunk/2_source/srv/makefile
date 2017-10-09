@@ -61,7 +61,7 @@ COMMON_SOURCES:= ../common_utils/concurrency/itc_mutex.cpp \
 COMMON_OBJS:= $(COMMON_SOURCES:.cpp=.o)
 
 #工程文件
-PRJ_SOURCES=./ctrl_center_thread.cpp ./main.cpp
+PRJ_SOURCES=./src/ctrl_center_thread.cpp ./src/main.cpp
 PRJ_OBJS=$(PRJ_SOURCES:.cpp=.o)
 
 SOURCES:=$(COMMON_SOURCES) $(AUTO_SOURCES) $(PRJ_SOURCES)
@@ -111,6 +111,8 @@ bu_demo:$(OBJS)
 #     TARGETS ...: TARGET-PATTERN: PREREQ-PATTERNS ...
 #        
 $(COMMON_OBJS): %.o:%.cpp
+	$(GCC) -o $@ $(DCPPFLAGS) $(CFLAGS) $(INCLUDES) $<
+$(PRJ_OBJS): %.o:%.cpp
 	$(GCC) -o $@ $(DCPPFLAGS) $(CFLAGS) $(INCLUDES) $<
 
 %.o: %.c

@@ -67,8 +67,10 @@ int recv_que_push(ST_BIN_BUFF *bin_buff)
    ST_RECV_QUE *que=get_recv_que();
    if(NULL==que) return -1;
 
+   //ST_BIN_BUFF *bin_buff=NULL;
    que->mutex.lock();
    que->recv_que.push_back(bin_buff);
+   //bin_buff=que->recv_que.front();
    que->mutex.unlock();
    
 }
@@ -95,10 +97,10 @@ typedef struct {
   int fd;                           // 连接句柄
   char host[MAX_IP_LEN];           // IP地址
   int port;                         // 端口
-  int len;                          // 缓冲区数据大小
+  //int len;                          // 缓冲区数据大小
   //char recv_buff[16];   // 缓冲数据
   //char snd_buff[MAX_CLIENT_BUFF_LEN];    // 发送缓存
-  bool  status;                     // 状态
+  bool  status;                     // 使用标记; true-正在使用; false-没有使用;
   
   ST_SocketConnInfo conn_info;//连接信息
 
@@ -106,22 +108,22 @@ typedef struct {
   //发送与接收可以并行,故需要发送缓存与接收缓存两个;
   //ST_SOCKET_BUFF_INFO recv_buff_info;//接收缓存info
   //ST_SOCKET_BUFF_INFO snd_buff_info; //发送缓存info
-} client_t;
+} ST_SockConnHandle;//socket连接句柄
 
-client_t *g_client_ptr = NULL; //客户端连接
+ST_SockConnHandle *g_client_ptr = NULL; //客户端连接
 
 //功能:申请一个空闲网络连接
-client_t *alloc_conn_info()
+ST_SockConnHandle *alloc_conn_info()
 {
    int i=0;
-   client_t *ptr=NULL;
+   ST_SockConnHandle *ptr=NULL;
    for(i=0; i<MAX_CLIENT_SIZE; i++)
    {
      ptr=g_client_ptr+i;
      if(ptr->status)
         continue;
      
-     memset(ptr, 0, sizeof(client_t));
+     memset(ptr, 0, sizeof(ST_SockConnHandle));
      ptr->status=true;
      return ptr;
    }
@@ -130,19 +132,19 @@ client_t *alloc_conn_info()
 }
 
 //功能:释放网络连接
-void free_conn_info(client_t *ptr)
+void free_conn_info(ST_SockConnHandle *ptr)
 {
    if(NULL==ptr) return;
-   memset(ptr, 0, sizeof(client_t));
+   memset(ptr, 0, sizeof(ST_SockConnHandle));
    ptr->status=false;
    return;
 }
 
 //功能: 根据socket文件描述符找到对应的连接信息;
-client_t *get_conn_info(int so)
+ST_SockConnHandle *get_conn_info(int so)
 {
    int i=0;
-   client_t *ptr=NULL;
+   ST_SockConnHandle *ptr=NULL;
    for(i=0; i<MAX_CLIENT_SIZE; i++)
    {
      ptr=g_client_ptr+i;
@@ -175,6 +177,10 @@ int CRecvThread::terminate()
 
 
 // 接收数据
+// 参数:
+//   [in]so: socket fd表示一个socket连接;
+//   [out]close_flag: 如果在读取过程中,发现连接被关闭或出现异常,则设置该标记
+//         注:该函数不会关闭so连接;
 int do_read_data(int so, bool *close_flag) {
   if(NULL!=close_flag) *close_flag=false;
 
@@ -184,9 +190,17 @@ int do_read_data(int so, bool *close_flag) {
   //int n=0;
   int rc;
 
+  //获取连接句柄
+  ST_SockConnHandle *client_ptr=get_conn_info(so);
+  if(NULL==client_ptr)
+  {
+    ERROR_MSG("Error: do_read_data failed! 找不到连接句柄");
+    return -2;
+  }
   //查找socket表示的网络连接;
-  CSocketConnPool *recv_conn_pool=mxx_get_socket_conn_pool(ConnPool_RCV);//连接池
-  ST_SocketConnInfo *conn_ptr=mxx_get_socket_conn_info(ConnPool_RCV,so);
+  //CSocketConnPool *recv_conn_pool=mxx_get_socket_conn_pool(ConnPool_RCV);//连接池
+  //ST_SocketConnInfo *conn_ptr=mxx_get_socket_conn_info(ConnPool_RCV,so);
+  ST_SocketConnInfo *conn_ptr=&client_ptr->conn_info;
   if(NULL==conn_ptr)
   {
      ERROR_MSG("无法根据socket描述符找到对应的连接信息!");
@@ -228,9 +242,10 @@ int do_read_data(int so, bool *close_flag) {
         
         break;
      }
-     else if(rc<sizeof(bin_head))//缓存长度不足一个报文头
+     else if((unsigned int)rc<sizeof(bin_head))//缓存长度不足一个报文头
         break;
 
+     TEST_MSG("开始读取数据...\n");
 
      //bin_buff=NULL;//上一次读取的报文已进入队列,不跟踪不会造成内存泄漏;
      rc=mxx_read_event(so, &sock_buff);//一次读取一个协议包
@@ -284,8 +299,9 @@ int do_read_data(int so, bool *close_flag) {
   {
      //epoll_del(fd_epoll, ptr->fd);
      //close(ptr->fd);//需要先删除监听,再关闭socket;故不能在此处close();
-     //free_conn_info(conn_ptr);
-     recv_conn_pool->remove_socketConnInfo(so);
+     //free_conn_info(client_ptr);
+     
+     //recv_conn_pool->remove_socketConnInfo(so);
   }
   return 0;
 }
@@ -298,6 +314,12 @@ int do_write_data(int so, bool *close_flag)
    if(so<=0) //无效文件描述符
       return -1;
 
+   ST_SockConnHandle *client_ptr=get_conn_info(so);
+   if(NULL==client_ptr)
+   {
+      ERROR_MSG("Error: do_write_data failed! 找不到sock连接句柄!");
+      return -2;
+   }
    for(;;)
    {
      //下一个发送缓存...
@@ -306,16 +328,16 @@ int do_write_data(int so, bool *close_flag)
         break;
 
      //找到socket对应的连接
-     ST_SocketConnInfo *conn_ptr=mxx_get_socket_conn_info(ConnPool_SND,so);
-     if(NULL==conn_ptr)
-     {
-        if(NULL!=snd_bin_buff->buff)
-        {
-          mxx_free_bin_pack(snd_bin_buff->buff);
-          snd_bin_buff->buff=NULL;
-        }
-        continue;
-     }
+     //ST_SocketConnInfo *conn_ptr=mxx_get_socket_conn_info(ConnPool_SND,so);
+     //if(NULL==conn_ptr)
+     //{
+     //   if(NULL!=snd_bin_buff->buff)
+     //   {
+     //     mxx_free_bin_pack(snd_bin_buff->buff);
+     //     snd_bin_buff->buff=NULL;
+     //   }
+     //   continue;
+     //}
 
    
      //开始发送...
@@ -350,6 +372,7 @@ int do_accept_client()
   socklen_t cliaddr_len = sizeof(cliaddr);
 
   int rc;
+  int ret_code=0;//返回码
 
   int conn_fd = accept(fd_listen, (struct sockaddr *)&cliaddr, &cliaddr_len);
   if (conn_fd < 0) {
@@ -357,12 +380,20 @@ int do_accept_client()
     return -1;
   }
 
-  //创建conn连接信息
-  ST_SocketConnInfo conn_info;
-  memset(&conn_info, 0, sizeof(conn_info));
+  //创建conn连接信
+  ST_SockConnHandle *client_ptr=alloc_conn_info();//申请一个socket连接句柄
+  if(NULL==client_ptr)
+  {
+    ERROR_MSG("连接已经达到上限,无法接受新连接!");
+    close(conn_fd);
+    return -2;
+  }
+  memset(client_ptr, 0, sizeof(client_ptr));
+  client_ptr->fd=conn_fd;
 
-
-  ST_SocketConnInfo *conn_info_ptr=&conn_info; //conn_ptr=alloc_conn_info();
+  //ST_SocketConnInfo conn_info;
+  //memset(&conn_info, 0, sizeof(conn_info));
+  ST_SocketConnInfo *conn_info_ptr=&client_ptr->conn_info; //conn_ptr=alloc_conn_info();
   if(NULL==conn_info_ptr)//无可用连接
   {
      //此时连接尚未增加到监听,直接关闭即可;
@@ -388,9 +419,12 @@ int do_accept_client()
   //获取对方ip和端口
   if((rc=getpeername(conn_fd, (struct sockaddr *)&addr, &addr_len))<0)
   {
-     close(conn_fd);//注意:需要关闭连接
      ERROR_MSG("do_accept_client: getpeername() failed, rc=[%d], errno=[%d], strerr=[%s]", rc, errno, strerror(errno));
-     return -2;
+     close(conn_fd);//注意:需要关闭连接
+     conn_fd=0;
+     free_conn_info(client_ptr);
+     client_ptr=NULL;
+     return -3;
   }
   inet_ntop(addr.sin_family, &addr.sin_addr, (char*)conn_info_ptr->sci_remote_ip, sizeof(conn_info_ptr->sci_remote_ip));//对方ip
   conn_info_ptr->sci_remote_port = ntohs(addr.sin_port);
@@ -399,12 +433,15 @@ int do_accept_client()
   memset(&addr, 0, sizeof(addr));
   if((rc=getsockname(conn_fd, (struct sockaddr *)&addr, &addr_len))<0)//获取本地端口和ip
   {
-     close(conn_fd);//注意:需要关闭连接
      ERROR_MSG("do_accept_client: getsockname() failed, rc=[%d], errno=[%d], strerr=[%s]", rc, errno, strerror(errno));
-     return -2;
+     close(conn_fd);//注意:需要关闭连接
+     conn_fd=0;
+     free_conn_info(client_ptr);
+     client_ptr=NULL;
+     return -4;
   }
-  inet_ntop(addr.sin_family, &addr.sin_addr, (char *)conn_info_ptr->sci_local_ip, sizeof(conn_info_ptr->sci_local_ip));//对方ip
-  conn_info_ptr->sci_local_port = ntohs(addr.sin_port);
+  inet_ntop(addr.sin_family, &addr.sin_addr, (char *)conn_info_ptr->sci_local_ip, sizeof(conn_info_ptr->sci_local_ip));//本地ip
+  conn_info_ptr->sci_local_port = ntohs(addr.sin_port);//本地端口
 
   //初始化时间...
   os_get_timeval(&conn_info_ptr->sci_start_time);//设置连接建立时间
@@ -462,14 +499,28 @@ int do_accept_client()
   //          inet_ntoa(cliaddr.sin_addr), cliaddr.sin_port);
   
   return conn_info_ptr->sci_sock_fd;
+FAILED:
+  if(NULL!=client_ptr)
+  {
+    free_conn_info(client_ptr);
+    client_ptr=NULL;
+  }
+  if(conn_fd>0)
+  {
+    close(conn_fd);
+    conn_fd=0;
+  }
+
+  return ret_code;
+
 }
 
-//功能:连接被关闭处理事件
+//功能:连接被关闭处理事件,但此处不执行关闭操作,调用该函数前一定注意关闭socket fd
 int do_disconn(int so, bool *close_flag)
 {
    if(NULL!=close_flag) *close_flag=false;
 
-   client_t *ptr=get_conn_info(so);
+   ST_SockConnHandle *ptr=get_conn_info(so);
    if(NULL==ptr)
       return -2;
 
@@ -556,7 +607,7 @@ int CRecvThread::recv_routine()
   printf("thread_recv: success to add server socket to epoll monitor!\n");
 
 
-  g_client_ptr = new client_t[MAX_CLIENT_SIZE];//客户端连接
+  g_client_ptr = new ST_SockConnHandle[MAX_CLIENT_SIZE];//客户端连接
 
   struct epoll_event events[MAX_EPOLL_SIZE];//监听最大事件数量
   int epoll_sig_interrpt_count=0;//epoll被signal中断次数
