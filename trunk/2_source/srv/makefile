@@ -87,7 +87,7 @@ endif
 TARGET:=bu_demo
 #输出路径
 OUTPUT_DIR:=./bin
-all:clean $(TARGET)
+all:$(TARGET)
 
 #构建规则
 bu_demo:$(OBJS)

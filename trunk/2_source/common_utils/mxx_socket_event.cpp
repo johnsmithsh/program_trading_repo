@@ -85,6 +85,10 @@ int mxx_read_event(int so, ST_SOCKET_BUFF_INFO *sock_buff_info)
              }
              continue;
           }
+          else if(EINTR==errno)//被中断,继续读取
+          {
+             continue;
+          }
           else{//其他错误;
              ret_code=MXX_ERROR_SOCKET_RECV_FAILED;
              break;

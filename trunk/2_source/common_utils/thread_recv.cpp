@@ -80,10 +80,15 @@ ST_BIN_BUFF * recv_que_pop()
    ST_RECV_QUE *que=get_recv_que();
    if(NULL==que) return NULL;
 
-   ST_BIN_BUFF *bin_buff;
+   ST_BIN_BUFF *bin_buff=NULL;
+   int size=0;
    que->mutex.lock();
-   bin_buff=que->recv_que.front();
-   que->recv_que.pop_front();
+   size=que->recv_que.size();
+   if(size>0)
+    {
+     bin_buff=que->recv_que.front();
+     que->recv_que.pop_front();
+    }
    que->mutex.unlock();
    return bin_buff;
 }
@@ -181,6 +186,8 @@ int CRecvThread::terminate()
 //   [in]so: socket fd表示一个socket连接;
 //   [out]close_flag: 如果在读取过程中,发现连接被关闭或出现异常,则设置该标记
 //         注:该函数不会关闭so连接;
+// 返回值:
+//    <0-失败; 0-成功;
 int do_read_data(int so, bool *close_flag) {
   if(NULL!=close_flag) *close_flag=false;
 
@@ -217,33 +224,40 @@ int do_read_data(int so, bool *close_flag) {
   ST_SOCKET_BUFF_INFO sock_buff;
   memset(&sock_buff, 0, sizeof(sock_buff));
 
-  //开始读取...
+  //开始读取(每个for循环读取一个协议包)...
+  int bin_pack_count=0;
   for(;;)
   {
-     memset(&sock_buff, 0, sizeof(sock_buff));
+    memset(&sock_buff, 0, sizeof(sock_buff));
 
-     //判断是否存在下一个协议包
-     rc=recv(so, &bin_head, sizeof(bin_head), MSG_PEEK|MSG_DONTWAIT);
-     if(rc<0)
-     {
-        if((EAGAIN==rc) || (EWOULDBLOCK==rc))//没有数据
-           break;
-        else if(EINTR==rc)//被中断,下次读取吧!
-           break;
-        else //其他错误
-        {
-           if(NULL!=close_flag) *close_flag=true;
-           break;
-        }
+     //判断是否存在下一个协议包: peek报文头
+    rc=recv(so, &bin_head, sizeof(bin_head), MSG_PEEK|MSG_DONTWAIT);
+    if(rc<0)
+    {
+      if((EAGAIN==errno) || (EWOULDBLOCK==errno))//没有数据
+         break;
+      else if(EINTR==errno)//被中断,下次读取吧!
+         break;
+      else //其他错误
+      {
+        ERROR_MSG("peek报文头失败!未知错误,errno=[%d], strerr=[%s]", errno, strerror(errno));
+        if(NULL!=close_flag) 
+          *close_flag=true;
+        break;
+      }
      }
-     else if(0==rc)//socket连接关闭
+     else if(0==rc)//socket在读取过程中连接关闭
      {
         if(NULL!=close_flag) *close_flag=true;
         
         break;
      }
      else if((unsigned int)rc<sizeof(bin_head))//缓存长度不足一个报文头
+     {
+        //不应该出现该情况
+        ERROR_MSG("peek报文头,长度[%d]<sizeof(head)", rc);
         break;
+     }
 
      TEST_MSG("开始读取数据...\n");
 
@@ -268,7 +282,7 @@ int do_read_data(int so, bool *close_flag) {
           //判断当前报文是否完整,如果完整则继续
           //
 
-          if(NULL!=close_flag) *close_flag=true;
+       if(NULL!=close_flag) *close_flag=true;
        }
        else if(MXX_ERR_BIN_PACK_ALLOC_FAILED==rc)//申请缓存失败
        {

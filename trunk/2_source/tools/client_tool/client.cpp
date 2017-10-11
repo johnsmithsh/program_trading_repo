@@ -46,13 +46,15 @@ int main(int argc, char ** argv)
    so=mxx_socket_connect(g_server_ip, g_server_port);//连接到指定客户端
    if(so<0)
    {
+      //OUT_INFO_MSG("Error:连接ip:port=[%s:%d]! rc=[%d], errno=[%d], strerr=[%s]", g_server_ip, g_server_port, errno, strerror(errno));
       if(NULL!=bin_pack)
       {
          mxx_free_bin_pack(bin_pack);
          bin_pack=NULL;
       }
-      OUT_INFO_MSG("Error:连接ip:port=[%s:%d]! rc=[%d], errno=[%d], strerr=[%s]", g_server_ip, g_server_port, errno, strerror(errno));
-      exit(EXIT_FAILURE);
+      //char *errmsg=strerror(errno);
+      OUT_INFO_MSG("Error:连接ip:port=[%s:%d]! rc=[%d], errno=[%d], strerr=[%s]", g_server_ip, g_server_port, so,errno, strerror(errno));
+      return -1;//exit(EXIT_FAILURE);
    }
    
    for(;;)

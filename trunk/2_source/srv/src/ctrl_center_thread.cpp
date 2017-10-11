@@ -67,6 +67,7 @@ int CCtrlCenterThread::handle_routine()
   int data_len=0;
   for(;;)
   {
+
      //从接收缓存获取协议包
      bin_buff=recv_que_pop();
      if(NULL==bin_buff)
