@@ -1,0 +1,28 @@
+1523520376646 16:06:16.646 Level4000 -- [src/main.cpp:203]build version:
+         timestamp:Apr 12 2018 15:13:54
+
+1523520376649 16:06:16.649 Level8000 -- [src/main.cpp:228]FATAL: Cannot open global ctrl struct!
+
+1523520432426 16:07:12.426 Level4000 -- [src/main.cpp:203]build version:
+         timestamp:Apr 12 2018 15:13:54
+
+1523524269673 17:11:09.673 Level4000 -- [src/main.cpp:203]build version:
+         timestamp:Apr 12 2018 17:10:07
+
+1523524325168 17:12:05.168 Level8000 -- [src/main.cpp:228]FATAL: Cannot open global ctrl struct!
+
+1523524359353 17:12:39.353 Level4000 -- [src/main.cpp:203]build version:
+         timestamp:Apr 12 2018 17:10:07
+
+1523524359357 17:12:39.357 Level8000 -- [src/main.cpp:228]FATAL: Cannot open global ctrl struct!
+
+1523524389592 17:13:09.592 Level4000 -- [src/main.cpp:203]build version:
+         timestamp:Apr 12 2018 17:10:07
+
+1523524389597 17:13:09.597 Level8000 -- [src/main.cpp:228]FATAL: Cannot open global ctrl struct!
+
+1523524391355 17:13:11.355 Level4000 -- [src/main.cpp:203]build version:
+         timestamp:Apr 12 2018 17:10:07
+
+1523524391358 17:13:11.358 Level8000 -- [src/main.cpp:228]FATAL: Cannot open global ctrl struct!
+
