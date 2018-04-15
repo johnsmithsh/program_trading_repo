@@ -31,7 +31,7 @@ SFIX:=.c .C .cpp .cc .CPP .c++ .cp .cxx
 
 
 #头文件路径
-INCLUDES:= -I./ -I../ -Icommon/ -I../concurrency -I../rtti_proto
+INCLUDES:= -I./ -I../ -Icommon/ -I./common/concurrency -I../rtti_proto
 #动态库路径
 LIB_DIR:=
 SO_LIBS:=-lstdc++ -lpthread -lrt
@@ -40,6 +40,7 @@ SO_LIBS:=-lstdc++ -lpthread -lrt
 LOG_SRCS=common/logfile.cpp common/logFileManage.cpp
 COMMON_SOURCES:= common/os_path.cpp common/ConfigFile.cpp \
                  common/os_thread.cpp \
+                 common/concurrency/ipc_shm_sysv.cpp \
                  $(LOG_SRCS)
 COMMON_OBJS:= $(COMMON_SOURCES:.cpp=.o)
 

@@ -38,6 +38,7 @@
 #endif
 
 #include "os_thread.h"
+#include "ipc_shm_sysv.h"
 
 #include "logfile.h"
 #include "global_ctrl.h"
@@ -107,34 +108,58 @@ bool check_instance_mode()
     return false;
 }
 
+
+//-------------------------------------------------------------
+// 定义全局控制信息
+//-------------------------------------------------------------
+IpcShmSysV g_ctrl_shm;//!< 还是暂时不使用指针
 st_shm_pubctrl *g_global_ctrl=NULL; //!< 全局控制信息,控制所有进程; 该结构在共享内存中,对所有进程开放
-//@brief 获取服务器控制信息,该信息多个进程可以看到
+/**
+ * @brief 获取服务器控制信息,该信息多个进程可以看到
+ * @param 无
+ * @retval 返回实例指针; NULL-创建实例失败
+ * @note 单实例模式
+ */
 st_shm_pubctrl * create_global_ctrl_instance()
 {
-    //todo 创建共享内存...
-	//todo 共享内存关联到g_global_ctrl...
-	
+    int rc;
+    char shm_name[]="./ctrl";
+    
+    //创建共享内存...
+    rc=g_ctrl_shm.shm_open(shm_name, 0, sizeof(st_shm_pubctrl));/*根据文件生成key*/
+    if(rc<0)
+    {
+        FATAL_MSG("Fatal: 打开共享内存失败,shmname=[%s], rc=[%d]", shm_name, rc);
+        return NULL;
+    }
+	//共享内存关联到g_global_ctrl...
     if(NULL==g_global_ctrl)
 	{
-	     g_global_ctrl=new st_shm_pubctrl();
+	    g_global_ctrl=(st_shm_pubctrl *)g_ctrl_shm.get_shmaddr();//共享内存管理到全局变量
 	}
-	
+    if(NULL==g_global_ctrl)
+    {
+        FATAL_MSG("Fatal: 共享内存关联到g_global_ctrl失败!,shmname=[%s]", shm_name);
+        g_ctrl_shm.shm_close();
+        return NULL;        
+    }
 	
     return g_global_ctrl;
 }
-st_shm_pubctrl * open_global_ctrl_instance()
-{
-    return NULL;
-}
-
+//@brief 删除服务器控制实例
 bool delete_global_ctrl_instance()
 {
-    return false;
+    g_ctrl_shm.shm_close();
+    g_global_ctrl=NULL;
+    return true;
 }
+//@brief 返回服务器控制实例指针
 st_shm_pubctrl *get_global_ctrl_instance()
 {
 	return g_global_ctrl;
 }
+//-------------------------------------------------------------------------------------------
+
 
 
 //@brief 功能: 后台运行
@@ -166,7 +191,15 @@ bool daemon_run()
 //@brief 功能: 停止服务
 void toStop()
 {
-    st_shm_pubctrl* global_ctrl_ptr=get_global_ctrl_instance();
+    //创建实例
+    st_shm_pubctrl* global_ctrl_ptr=create_global_ctrl_instance();
+	if(NULL==global_ctrl_ptr)
+	{
+	    FATAL_MSG("%s", "FATAL: Cannot open global ctrl struct!\n");
+		return;
+	}
+    
+    global_ctrl_ptr=get_global_ctrl_instance();
 	if(NULL==global_ctrl_ptr)
 	{
 	    printf("Fatal: open global ctrl failed!\n");
@@ -175,6 +208,8 @@ void toStop()
 	
 	global_ctrl_ptr->exit_code=EXITCODE_TRUE;
 	printf("Warning: system is going to stop!\n");
+    
+    delete_global_ctrl_instance();
 	return;
 }
 
@@ -253,6 +288,15 @@ int main(int argc, char **argv)
 	    INFO_MSG("%s",build_info_str);
 	}
 	
+    if(argc>1)
+    {
+        if(0==strcmp(argv[1], "stop"))
+        {
+            toStop();
+            return 0;
+        }
+    }
+    
 	//根据参数判断是否已经可继续运行...
 	//如果单实例模式,则不能继续运行必须退出
 	if( (MULTI_INSTANCE_SINGTON_SYS_LEVEL==sys_para_ptr->multi_instance_mode) 
