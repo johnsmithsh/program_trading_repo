@@ -1,6 +1,12 @@
 #ifndef __MXX_NET_SOCKET_H_
 #define __MXX_NET_SOCKET_H_
 
+//封装socket错误码;
+#define MXX_SOCKET_SUCC        (0)      //!< socket操作成功; 
+#define MXX_SOCKET_BUFF_ERROR  (-1000)  //!< 缓冲区错误 如缓冲区指针无效 || 缓存大小<=0;
+#define MXX_SOCKET_CLOSED      (-1001)  //!< socket关闭
+#define MXX_SOCKET_TIMEOUT     (-1002)  //!< 超时
+#define MXX_SOCKET_PARAM_ERROR (-1003)  //!< 参数错误
 /*
  * 说明: 为便于使用,简单封装socket接口;
  *   GPL
@@ -69,4 +75,121 @@ int mxx_socket_set_nonblock(int so);
 //功能: 获取socket非阻塞模式标记; 返回值: 1-非阻塞模式;0-阻塞模式; <0-失败
 int mxx_socket_get_nonblock(int so);
 
+/////////////////////////////////////////////////////////////////////////////////////////////
+//------------------------------------------------------------------------------------------
+//socket属性设置
+//------------------------------------------------------------------------------------------
+//@brief 接收超时时间设置
+int mxx_sockopt_set_recvtimeout(int sockfd, int millisecond);
+//@brief 发送超时时间设置
+int mxx_sockopt_set_sendtimeout(int sockfd, int millisecond);
+//@brief 通过SO_SNDTIMEO让conn超时
+int mxx_sockopt_set_conntimeout(int sockfd, int millisecond);
+
+/**
+ * @brief 设置阻塞模式(默认情况下,是阻塞模式);
+ * @param
+ *     blockmode: true-阻塞模式; false-非阻塞模式;
+ **/
+int mxx_sockopt_set_block(int sockfd, bool blockmode);
+
+/**
+ * @brief
+ * @note
+ *      SO_REUSEADDR  ???
+ *      SO_DONTLINGER ???
+ **/
+int mxx_sockopt_set_timewaitmode(int sockfd, int timewait_millisecond);
+
+/**
+ * @biref 用于设置socket的close行为
+ * @param
+ *    [in]sockfd:socket描述符
+ *    [in]enable: true-启用linger; false-停用linger;
+ *    [in]second: 延迟时间,单位:秒; 范围[0, 10]
+ * @note
+ *  注意：
+ *    这个选项需要谨慎使用，尤其是强制式关闭，会丢失服务器发给客户端的最后一部分数据。
+ *    UNP中:
+ *       The TIME_WAIT state is our friend and is there to help us(i.e., to let the old duplicate segments expire in the network).
+ *    使用该选项,程序一定要检查close返回值; close超时返回， 则close返回-1 && errno=EWOULDBLOCK;
+ **/
+int mxx_sockopt_set_linger(int sockfd, bool enable, int second);
+
+/**
+ * @brief keepalive属性
+ * @param
+ *    [in]sockfd
+ *    [in]enable: true-启用keepalive; false-禁用keepalive;
+ *    [in]keepIdle:     单位:秒; <0-使用默认值; 如果在指定秒内没有任何数据交互,则进行探测. 缺省值:7200(s)
+ *    [in]keepInterval: 单位:秒; <0-使用默认值; 探测时发探测包的时间间隔为5秒. 缺省值:75(s)
+ *    [in]keepCount:    单位:次; <0-使用默认值; 探测重试的次数. 全部超时则认定连接失效..缺省值:9(次)
+ * @note
+ *    仅适用于TCP;
+ *    大多数内核是基于整个内核维护该时间参数的,而不是基于每个socket维护;
+ *    常用于服务器,用于检测半开连接并关闭;
+ **/
+int mxx_sockopt_set_keepalive_info(int sockfd, bool enable, int keepIdle=-1, int keepInterval=-1, int keepCount=-1);
+
+/**
+ * @brief 启用广播模式
+ * @param
+ **/
+//int mxx_sockopt_set_enablebroadcast(int sockfd, int broadcastmode);
+
+
+//int mxx_sockopt_set_recvbuffsize(int sockfd, size_t recvbuffsize);
+//int mxx_sockopt_set_sendbuffsize(int sockfd, size_t sendbuffsize);
+//-------------------------------------------------------------------------------------------------------------------
+//阻塞发送与接收, 直到处理指定长度数据
+/**
+ * @brief 从socket接收tcp数据,直到收到制定长度数据或者超时;
+ * @param
+ *   [in]sockfd
+ *   [in]buff/buffsize: 缓存指针和缓存大小
+ *   [out]data_len: 实际接收数据长度
+ * @retval
+ *    0-成功; MXX_SOCKET_BUFF_ERROR-缓冲区错误; MXX_SOCKET_CLOSED-socket关闭; MXX_SOCKET_TIMEOUT-超时; 其他小于0-错误;
+ * @note
+ *   该函数暂时仅支持tcp;
+ **/
+int mxx_socket_recv_waitall(int sockfd, char *buff, int buffsize, int *rcv_len, int timeout=0);
+/**
+ * @brief socket发送tcp数据,直到发送长度数据或者超时;
+ * @param
+ *   [in]sockfd
+ *   [in]buff/buffsize: 缓存指针和缓存大小
+ *   [out]snd_len: 实际发送数据长度
+ * @retval
+ *    0-成功;
+ *    其他小于0-错误;
+ **/
+int mxx_socket_send_waitall(int sockfd, char *buff, int datalen,  int *snd_len, int timeout=0);
+
+//非阻塞发送与接收,立即返回
+/**
+ * @brief 从socket接收tcp数据,直到收到指定长度数据或者立即返回;
+ * @param
+ *   [in]sockfd
+ *   [in]buff/buffsize: 缓存指针和缓存大小
+ *   [out]rcv_len: 实际接收数据长度
+ * @retval
+ *    0-成功; MXX_SOCKET_BUFF_ERROR-缓冲区错误; MXX_SOCKET_CLOSED-socket关闭; MXX_SOCKET_TIMEOUT-超时; 
+ *    其他小于0-错误;
+ **/
+int mxx_socket_recv_nowait(int sockfd, char *buff, int buffsize, int *rcv_len);
+/**
+ * @brief socket发送tcp数据,直到发送长度数据或者超时;
+ * @param
+ *   [in]sockfd
+ *   [in]buff/buffsize: 缓存指针和缓存大小
+ *   [out]snd_len: 实际发送数据长度
+ * @retval
+ *    0-成功;
+ *    其他小于0-错误;
+ **/
+int mxx_socket_send_nowait(int sockfd, char *buff, int datalen,  int *snd_len);
+
+int mxx_socket_read(int sockfd, char *buff, int datalen,  int *snd_len, int timeout=0);
+int mxx_socket_write(int sockfd, char *buff, int datalen,  int *snd_len, int timeout=0);
 #endif
