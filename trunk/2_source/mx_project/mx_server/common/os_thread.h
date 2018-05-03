@@ -20,6 +20,8 @@
 	typedef pid_t PID_T;
 #endif
 
+#define MXX_INVALID_THREDID (-1) //!< 无效进程id
+
 #ifdef __cplusplus
 extern "C" {
 #endif

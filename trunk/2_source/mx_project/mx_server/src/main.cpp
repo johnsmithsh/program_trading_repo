@@ -35,6 +35,7 @@
 #ifdef WIN32
 #else
   #include <unistd.h>
+  #include <signal.h>
 #endif
 
 #include "os_thread.h"
@@ -42,6 +43,7 @@
 
 #include "logfile.h"
 #include "global_ctrl.h"
+#include "servermanage.h"
 
 /////////////////////////////////////////////////////////////////////////////////
 //-----------------------------------------------------
@@ -159,7 +161,13 @@ st_shm_pubctrl *get_global_ctrl_instance()
 	return g_global_ctrl;
 }
 //-------------------------------------------------------------------------------------------
+/////////////////////////////////////////////////////////////////////////////////////////////
+//-------------------------------------------------------------------------------------------
+// 
+//-------------------------------------------------------------------------------------------
+CServerManage g_server_manage;
 
+/////////////////////////////////////////////////////////////////////////////////////////////
 
 
 //@brief 功能: 后台运行
@@ -239,6 +247,7 @@ void toShowInfo()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////
+int set_signal_function();
 /** 
  * @brief 程序入口main函数
  * @brief 函数简要说明-测试函数
@@ -251,6 +260,7 @@ void toShowInfo()
  */
 int main(int argc, char **argv)
 {
+    int rc;
     print_buildversion();
 	
 	ST_SystemPara * sys_para_ptr=get_system_para_instance();
@@ -330,8 +340,20 @@ int main(int argc, char **argv)
 		global_ctrl_ptr->last_chg_time=global_ctrl_ptr->main_start_time;
 	}
 	
-	//todo 信号处理函数...
+	//信号处理函数...
+	set_signal_function();
+
 	
+
+	
+    rc=g_server_manage.start_service();
+    if(rc<0)
+    {
+        FATAL_MSG("启动服务失败!");
+        delete_global_ctrl_instance();//!<其实此处省略也没有影响
+        mxx_log_destroy(); //!< 此处省略也没有影响
+        return -1;
+    }
 	//主进程循环
 	while(EXITCODE_TRUE!=global_ctrl_ptr->exit_code)
 	{
@@ -339,12 +361,86 @@ int main(int argc, char **argv)
 	}
 	
 	//退出程序前,清理资源...
+    g_server_manage.stop_service();
 	delete_global_ctrl_instance();
 	mxx_log_destroy();
     return 0;
 }
 
+//////////////////////////////////////////////////////////////////////////////////////////
+//--------------------------------------------------------------------------------------
+// 设置系统信号处理函数
+//--------------------------------------------------------------------------------------
+void sig_term(int signo)
+{
+    st_shm_pubctrl *global_ctrl_ptr=get_global_ctrl_instance();
+	if(NULL==global_ctrl_ptr)
+	    return;
+    //INFO_MSG("收到信号:%d , 服务即将即将退出!",signo);   //信号处理函数使用记录日志,不知道是否存在问题;
+	global_ctrl_ptr->exit_code=EXITCODE_TRUE;
+}
+int set_signal_function()
+{
+    /*
+	处理SIGCHLD信号并不是必须的。
+	如果父进程不等待子进程结束，子进程将成为僵尸进程（zombie）从而占用系统资源。
+	如果父进程等待子进程结束，将增加父进程的负担，影响服务器进程的并发性能。
+	在Linux下可以简单地将SIGCHLD信号的操作设为SIG_IGN。 
+	signal(SIGCHLD,SIG_IGN); 
+	*/
 
+	/* ****** Updated by CHENYH at 2004-8-6 16:52:43 ****** 
+	 * Solaris  Solaris缺省操作       Linux       Linux缺省操作 
+	 * SIGHUP   终止                 SIGHUP      忽略 
+	 * SIGINT   终止                 SIGINT      忽略 
+	 * SIGQUIT  终止，核心           SIGQUIT 终止，核心 
+	 * SIGILL   终止，核心           SIGILL 终止，核心 
+	 * SIGTRAP  终止，核心           SIGTRAP 忽略 
+	 * SIGABRT  终止，核心           SIGABRT 终止，核心 
+	 * SIGEMT   终止，核心           SIGEMT Linux 上不支持 
+	 * SIGFPE   终止，核心           SIGFPE 终止，核心 
+	 * SIGKILL  终止                 SIGKILL 终止 
+	 * SIGBUS   终止，核心           SIGBUS 终止，核心 
+	 * SIGSEGV  终止，核心           SIGSEGV 终止，核心 
+	 * SIGSYS   终止，核心           SIGSYS Linux 上不支持 
+	 * SIGPIPE  终止                 SIGPIPE 忽略 
+	 * SIGALRM  终止                 SIGALRM 忽略 
+	 * SIGTERM  终止                 SIGTERM 终止 
+	 * SIGUSR1  终止                 SIGUSR1 忽略 
+	 * SIGUSR2  终止                 SIGUSR2 忽略 
+	 * SIGCHLD  忽略                 SIGCHLD 忽略 
+	 * SIGPWR   忽略                 SIGPWR 忽略 
+	 * SIGWINCH 忽略                 SIGWINCH 进程停止 
+	 * SIGURG   忽略                 SIGURG 忽略 
+	 * SIGPOLL  终止                 SIGPOLL Linux 上不支持 
+	 * SIGSTOP  进程停止             SIGSTOP 进程停止 
+	 * SIGSTP   进程停止             SIGSTP 进程停止 
+	 * SIGCONT  忽略                 SIGCONT 忽略 
+	 * SIGTTIN  进程停止             SIGTTIN 进程停止 
+	 * SIGTTOU  进程停止             SIGTTOU 进程停止 
+	 * SIGVTALRM 终止                SIGVTALRM 终止，核心 
+	 * SIGPROF  终止                 SIGPROF 忽略 
+	 * SIGXCPU  终止，核心           SIGXCPU 终止，核心 
+	 * SIGXFSZ  终止，核心           SIGXFSZ 终止，核心 
+	 * SIGWAITING 忽略               SIGWAITING Linux 上不支持 
+	 * SIGLWP   忽略                 SIGLWP Linux 上不支持 
+	 * SIGFREEZE 忽略                SIGFREEZE Linux 上不支持 
+	 * SIGTHAW  忽略                 SIGTHAW Linux 上不支持 
+	 * SIGCANCEL 忽略                SIGCANCEL Linux 上不支持 
+	 * SIGRTMIN 终止                 SIGRTMIN Linux 上不支持 
+	 * SIGRTMAX 终止                 SIGRTMAX Linux 上不支持 
+	*/
+	signal(SIGPIPE, SIG_IGN);//!< SIGPIPE关闭;unix系统中,send在等待协议传送时连接断开,send进程还会收到SIGPIPE信号;
+	signal(SIGHUP, SIG_IGN);
+	signal(SIGINT, SIG_IGN);
+	signal(SIGTERM, sig_term);
+	
+	signal(SIGALRM, SIG_IGN);
+	
+	return 0;
+}
+//--------------------------------------------------------------------------------------
+//////////////////////////////////////////////////////////////////////////////////////////
 /** 函数注释规范说明
  * @brief 函数简要说明-测试函数
  * @param [in]argc  参数个数

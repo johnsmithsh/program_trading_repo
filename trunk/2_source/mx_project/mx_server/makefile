@@ -31,7 +31,7 @@ SFIX:=.c .C .cpp .cc .CPP .c++ .cp .cxx
 
 
 #头文件路径
-INCLUDES:= -I./ -I../ -Icommon/ -I./common/concurrency -I../rtti_proto
+INCLUDES:= -I./ -I../ -Icommon/  -I./common/concurrency -I./common/netsocket -I./public/
 #动态库路径
 LIB_DIR:=
 SO_LIBS:=-lstdc++ -lpthread -lrt
@@ -40,11 +40,16 @@ SO_LIBS:=-lstdc++ -lpthread -lrt
 LOG_SRCS=common/logfile.cpp common/logFileManage.cpp
 COMMON_SOURCES:= common/os_path.cpp common/ConfigFile.cpp \
                  common/os_thread.cpp \
+				 common/mxx_epoll.cpp \
                  common/concurrency/ipc_shm_sysv.cpp \
+				 common/concurrency/itc_mutex.cpp \
+                 common/thread_base.cpp \
+				 common/netsocket/mxx_net_socket.cpp \
                  $(LOG_SRCS)
 COMMON_OBJS:= $(COMMON_SOURCES:.cpp=.o)
 
-PRJ_SRC=src/main.cpp
+PRJ_SRC=src/main.cpp src/thread_heartbeat.cpp src/servermanage.cpp src/thread_recv.cpp \
+        src/bufuncinfo.cpp src/bugroupinfo.cpp 
 PRJ_OBJS=$(PRJ_SRC:.cpp=.o)
 
 SOURCES:=$(COMMON_SOURCES) $(AUTO_SOURCES)

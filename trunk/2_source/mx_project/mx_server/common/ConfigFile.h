@@ -70,13 +70,14 @@ class ConfigFile
     //int get_first_option(char *section_buff, int section_len, char *key_name, int key_len);
     //获取下一个配置项
     //int get_next_option(char *section_buff, int section_len, char *key_name, int key_len);
+
+    int load_cfg_file(const char *filename);
+
 #ifdef __UNIT_TEST_FLAG__ //单元测试
  public:
 #else
  private:
 #endif
-    int load_cfg_file(const char *filename);
-
     //读取指定的配置项,NULL找不到指定的配置项; 找到配置项,则返回参数value_buf
     char* read_profile_string(const char *section_name, char *key_name, char *value_buf, int value_size);
 
