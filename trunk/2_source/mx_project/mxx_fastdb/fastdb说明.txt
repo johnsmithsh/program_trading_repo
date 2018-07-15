@@ -1,0 +1,31 @@
+1.fastdb安装
+  #根据32位系统还是64位系统确定--with-offset-bits,默认32
+  $./configure --prefix=/opt/fastdb_3.76 --with-offset-bits=32|--with-offset-bits=64 
+  $make
+  $make install
+2.application编译
+  编译时必须指定-DHAVE_CONFIG_H,否则默认--with-offset-bits=64,运行时异常
+  
+  
+*fastdb说明
+  1.fastdb内存库大小不能超过物理库,否则效率比较慢;
+  2.锁是数据库级,不存在表锁定或记录锁定;
+  只读是共享锁;可写是排他锁;
+  另一个进程持有共享锁,则其他进程不能获取排他锁;
+  另一进程持有拍他锁,则其他进程可以获取共享锁,但读取的数据是老数据,即不会读取脏数据;
+** 共享内存模式,application编译指定diskless模式
+   1.可提高速度;
+   2.共享内存大小受到系统参数限制,默认32MB
+      $cat /proc/sys/kenel/shmmax
+      $vim /etc/sysctl.cfg
+          kernel.shmmni=4096
+          kernel.shmall=xxx
+          kernel.shmmax=xxx
+      $sysctl -p
+   3.fastdb中也使用32MB作为容量上限
+     见inc/database.h中dbDefaultInitDatabaseSize
+** open说明
+   1.fastdb在执行open操作时候dbConcurrentUpdate模式每次都会成功，因此可以随心所欲打开内存;
+   2.dbConcurrentRead模式open是有可能失败的，原因是上一次有进程open后没有执行close操作而异常退出导致;
+   处理方式: 先用dbConcurrentUpdate模式打开在close,然后在用dbConcurrentRead方式打开就可以;
+     
