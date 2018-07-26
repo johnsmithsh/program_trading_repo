@@ -1,6 +1,11 @@
 #ifndef __MXX_CTP_MD_H_
 #define __MXX_CTP_MD_H_
 
+#include <string>
+#include <vector>
+
+#include "ThostFtdcMdApi.h"
+
 class CCtpMdSpi: public CThostFtdcMdSpi
 {
   public:
@@ -18,7 +23,8 @@ class CCtpMdSpi: public CThostFtdcMdSpi
 		
 	///心跳超时警告。当长时间未收到报文时，该方法被调用。
 	///@param nTimeLapse 距离上次接收报文的时间
-	virtual void OnHeartBeatWarning(int nTimeLapse);
+	///@desc 该接口是内部实现,不会被调用
+	virtual void OnHeartBeatWarning(int nTimeLapse) {}
 	
 
 	///登录请求响应
@@ -51,29 +57,72 @@ class CCtpMdSpi: public CThostFtdcMdSpi
 
 //ctp连接状态
 #define CTP_SS_INIT       '0'  //初始状态
-#define CTP_SS_CONNECTING '1'  //已连接
-#define CTP_SS_LOGINNING  '2'  //登录中
-#define CTP_SS_RUNNING    '3'  //正在运行
-#define CTP_SS_LOGOUTING  '4'  //登出中
+#define CTP_SS_CONNECTING '1'  //连接中
+#define CTP_SS_CONNECTED  '2'  //已连接
+#define CTP_SS_LOGINNING  '3'  //登录中
+#define CTP_SS_RUNNING    '4'  //正在运行
+#define CTP_SS_LOGOUTING  '5'  //登出中
 
-class CCtpConnection
+class CCtpMdConnection
 {
   public:
-    CCtpConnection();
-    virtual ~CCtpConnection();
+    CCtpMdConnection();
+    virtual ~CCtpMdConnection();
   public:
-    int init(const char *flow_path);
+    int init(const char *flow_path="./ctp_md_path/");
     int release();
+
+    //功能: 连接
+    int connect() { return connect_sync(m_front_addr, m_ns_addr); }
+    //功能: 登录
+    int login()   { return login_sync(m_user_name, m_user_pwd); }
+    //功能: 登出
+    int logout()  { return logout_sync();}
+
     int connect_sync(const char *front_addr, const char *ns_addr);
     int login_sync(const char *user_name, const char *pwd);
     int logout_sync();
-    int SubscribeMarketData_sync();
-    int UnSubscribeMarketData_sync();
-    int SubscribeForQuoteRsp_sync();
-    int UnSubscribeForQuoteRsp_sync();
+
+    //功能: 订阅行情;
+    int SubscribeMarketData_sync(std::vector<std::string> contract_vec);
+    //功能: 退订行情
+    int UnSubscribeMarketData_sync(std::vector<std::string> contract_vec);
+
+    int SubscribeForQuoteRsp_sync(std::vector<std::string> contract_vec);
+    int UnSubscribeForQuoteRsp_sync(std::vector<std::string> contract_vec);
+
   public:
-    char m_ctp_status;//ctp连接状态
-    CThostFtdcMdApi *m_md_api;//请求接口
-    CCtpMdSpi *m_md_spi; //应答处理接口
+    //功能:分配请求序号
+    int get_requestid(){ return ++m_requestid;}
+
+    //功能: 设置自动重连标记
+    void set_autoconn_flag(bool flag=true) { m_bAutoReconn=flag; }
+    //功能:获取自动重连标记
+    bool get_autoconn_flag(){ return m_bAutoReconn;}
+
+    //功能:设置连接状态
+    char get_conn_status() { return m_ctp_status;}
+
+    void set_conn_status(char conn_status) { m_ctp_status=conn_status; }
+
+    //功能:设置交易日期
+    void set_tx_date(const char *tx_date);
+    const char *get_tx_date() { return m_tx_date; }
+  public:
+    //自动重连
+    bool m_bAutoReconn;//true-断开后自动重连;
+    char            m_ctp_status;//ctp连接状态
+    CThostFtdcMdApi *m_pMdApi;//API请求接口
+    CCtpMdSpi       *m_pMdSpi;      //SPI应答处理接口
+  private:
+    int  m_requestid;//请求序号
+
+    char m_front_addr[64];//前置地址
+    char m_ns_addr[64];   //域名服务器地址
+
+    char m_borker_id[64];//期货公司会员号
+    char m_user_name[64];//用户名,即user_id
+    char m_user_pwd[128];//用户密码
+    char m_tx_date[16];//交易日期
 };
 #endif
