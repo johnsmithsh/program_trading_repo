@@ -18,4 +18,16 @@ public:
 public:
 	CCtpMdConnection *m_pUserMdConn;//行情连接
 };
+
+//功能:获取行情连接
+CCtpMdConnection *globalinfo_get_MdConnection()
+{
+	CGlobalInfo *pGlobalInfo=CGlobalInfo::get_instance();
+	if(NULL==pGlobalInfo)
+		return NULL;
+	CCtpMdConnection *pCtpMd=pGlobalInfo->get_ctp_md();
+	if(NULL==pCtpMd)
+		return NULL;
+	return pCtpMd;
+}
 #endif

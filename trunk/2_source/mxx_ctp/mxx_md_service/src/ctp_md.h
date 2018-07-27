@@ -124,5 +124,9 @@ class CCtpMdConnection
     char m_user_name[64];//用户名,即user_id
     char m_user_pwd[128];//用户密码
     char m_tx_date[16];//交易日期
+  private:
+    int m_session_id;
+    int m_front_id;
+    char m_login_time[12];
 };
 #endif

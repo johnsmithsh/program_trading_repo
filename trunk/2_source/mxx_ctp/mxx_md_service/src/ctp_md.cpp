@@ -19,6 +19,10 @@ void CCtpMdSpi::OnFrontConnected()
 	{
 		ERROR_MSG("发起请求请求...");
 		rc=pCtpMd->login();
+		if(rc<0)
+		{
+			ERROR_MSG("登录失败[%d]!", rc);
+		}
 	}
 
 	return;
@@ -34,10 +38,7 @@ void CCtpMdSpi::OnFrontConnected()
 void CCtpMdSpi::OnFrontDisconnected(int nReason)
 {
 	INFO_MSG("OnFrontDisconnected行情连接断开[0x%x]...", nReason);
-	CGlobalInfo *pGlobalInfo=CGlobalInfo::get_instance();
-	if(NULL==pGlobalInfo)
-		return;
-	CCtpMdConnection *pCtpMd=pGlobalInfo->get_ctp_md();
+	CCtpMdConnection *pCtpMd=globalinfo_get_MdConnection();
 	if(NULL==pCtpMd)
 		return;
 
@@ -62,18 +63,71 @@ void CCtpMdSpi::OnFrontDisconnected(int nReason)
 ///登录请求响应
 void CCtpMdSpi::OnRspUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
+	INFO_MSG("OnRspUserLogin行情登录应答:requestId[%d], [%d] [%s]...", nRequestID, pRspInfo->ErrorID, pRspInfo->ErrorMsg);
+	INFO_MSG("OnRspUserLogin:交易日期[%s],brokerID[%s],user[%s],systemName[%s]", pRspUserLogin->TradingDay, pRspUserLogin->BrokerID, pRspUserLogin->UserID,pRspUserLogin->SystemName);
+	INFO_MSG("loginTime=[%s], sessionID[%d], frontID=[%d], maxOrderRef=[%d]",pRspUserLogin->LoginTime,pRspUserLogin->SessionID,pRspUserLogin->FrontID, pRspUserLogin->MaxOrderRef);
+	INFO_MSG("shfeTime=[%s], dceTime=[%s], czceTime=[%s], cffexTime=[%s], ineTime=[%s]",pRspUserLogin->SHFETime,pRspUserLogin->DCETime,pRspUserLogin->CZCETime, pRspUserLogin->FFEXTime,pRspUserLogin->INETime);
 
+	bool b_succ=false;//登录成功标记
+	if(0==pRspInfo->ErrorID) b_succ=true;
+
+	CCtpMdConnection *pCtpMd=globalinfo_get_MdConnection();
+	if(NULL==pCtpMd)
+		return;
+	char conn_status = pCtpMd->get_conn_status();
+	if(!b_succ)//登录失败
+	{
+		pCtpMd->set_conn_status(CTP_SS_CONNECTED);
+		INFO_MSG("行情连接状态: [%c]=>[%c]", conn_status, CTP_SS_CONNECTED);
+		return;
+	}
+
+	pCtpMd->set_conn_status(CTP_SS_RUNNING);
+	INFO_MSG("行情连接状态: [%c]=>[%c]", conn_status, CTP_SS_RUNNING);
+
+	//todo 记录登录时间,登录会话, 前置id
+	//todo 记录各个交易所时间
+	//todo 通知客户端各个交易所时间
+
+	return;
 }
 
 ///登出请求响应
 void CCtpMdSpi::OnRspUserLogout(CThostFtdcUserLogoutField *pUserLogout, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
+	INFO_MSG("OnRspUserLogout行情登录应答:requestId[%d], [%d] [%s]...", nRequestID, pRspInfo->ErrorID, pRspInfo->ErrorMsg);
+	INFO_MSG("OnRspUserLogout:brokerID[%s],user[%s],systemName[%s]", pUserLogout->BrokerID, pUserLogout->UserID);
 
+	bool b_succ=false;//登录成功标记
+	if(0==pRspInfo->ErrorID) b_succ=true;
+
+	CCtpMdConnection *pCtpMd=globalinfo_get_MdConnection();
+	if(NULL==pCtpMd)
+		return;
+	char conn_status = pCtpMd->get_conn_status();
+	if(!b_succ)//登录失败
+	{
+		pCtpMd->set_conn_status(CTP_SS_RUNNING);
+		INFO_MSG("行情连接状态: [%c]=>[%c]", conn_status, CTP_SS_RUNNING);
+		return;
+	}
+
+	pCtpMd->set_conn_status(CTP_SS_INIT);
+	INFO_MSG("行情连接状态: [%c]=>[%c]", conn_status, CTP_SS_INIT);
+
+	//todo 通知客户端登出
+
+	return;
 }
 ///错误应答
 void CCtpMdSpi::OnRspError(CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
+	INFO_MSG("OnRspError:requestId[%d], [%d] [%s]...", nRequestID, pRspInfo->ErrorID, pRspInfo->ErrorMsg);
+	//INFO_MSG("OnRspError:brokerID[%s],user[%s],systemName[%s]", pUserLogout->BrokerID, pUserLogout->UserID);
 
+	//todo 通知客户端错误消息
+
+	return;
 }
 ///订阅行情应答
 void CCtpMdSpi::OnRspSubMarketData(CThostFtdcSpecificInstrumentField *pSpecificInstrument, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
