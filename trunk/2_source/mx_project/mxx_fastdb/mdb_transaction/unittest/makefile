@@ -56,7 +56,7 @@ unittest_LIBS:=
 
 gtest_libs=-L./gtest/linux64/ -lgtest
 
-CFLAGS += -DSINGLE_UNITTEST  
+CFLAGS   += -DSINGLE_UNITTEST  
 CPPFLAGS += -DSINGLE_UNITTEST 
 #使用googletest
 LINK_FLAGS =  

@@ -10,7 +10,7 @@
 #include <string.h>
 #include <stdlib.h>
  
- //表示一个内存块
+//@brief 表示内存池的一个内存块
 typedef struct __st_memblock
 {
     void *buff_ptr; //内存指针
@@ -23,7 +23,7 @@ typedef struct __st_memblock
     struct __st_memblock *next;//下一个
 } st_memblock;
 
-//创建一个新的memblock
+//@brief 创建一个新的memblock; NULL表示堆申请内存失败
 inline st_memblock * memblock_create(size_t block_size)
 {
     assert(block_size>=sizeof(st_memblock));
@@ -43,7 +43,7 @@ inline st_memblock * memblock_create(size_t block_size)
     return block_ptr;
 }
 
-//功能: 删除memblock,并发返回next
+//@brief 功能: 删除memblock,并发返回next
 inline st_memblock * memblock_delete(st_memblock *memblock)
 {
     assert(NULL!=memblock);
@@ -61,13 +61,14 @@ inline st_memblock * memblock_delete(st_memblock *memblock)
     return next_ptr;
 }
 
-//功能: 计算内存内存块空闲内存大小
+//@brief功能: 计算内存内存块空闲内存大小
 inline unsigned int memblock_idlesize(st_memblock *memblock)
 {
     return memblock->buff_size-memblock->used_size;
 }
 
-//功能: 分配内存; NULL-表示内存块空闲内存不足;
+//@brief 功能: 分配内存; NULL-表示内存块空闲内存不足;
+//@note 此处分配的内存没有进行对齐处理,分配的空间可能影响存取效率;
 inline void * memblock_alloc(st_memblock *memblock, size_t alloc_size)
 {
     assert(alloc_size>0);
@@ -79,7 +80,7 @@ inline void * memblock_alloc(st_memblock *memblock, size_t alloc_size)
     return ptr;
 }
 
-//功能: 释放被占用的内存;注:从后向前释放指定大小; 
+//@brief 功能: 释放被占用的内存;注:从后向前释放指定大小; 
 inline void  memblock_free(st_memblock *memblock, size_t free_size)
 {
     assert(free_size>0);
@@ -90,7 +91,7 @@ inline void  memblock_free(st_memblock *memblock, size_t free_size)
     return ;
 }
 
-//功能:释放内存块中被占用的所有内存
+//@brief 功能:释放内存块中被占用的所有内存
 inline void memblock_free(st_memblock *memblock)
 {
     memblock_free(memblock, memblock->used_size);
@@ -102,7 +103,7 @@ inline void memblock_free(st_memblock *memblock)
 //   void *next;//下一块内存地址
 //}st_memunit_info;
 
-//功能:队列中插入一个memblock; 返回next;
+//@brief 功能:队列中插入一个memblock; 返回src;
 inline st_memblock *mempool_insert(st_memblock *dst, st_memblock *src, bool b_after=true)
 {
     assert(NULL!=src);
@@ -137,11 +138,13 @@ inline st_memblock *mempool_insert(st_memblock *dst, st_memblock *src, bool b_af
     return src;
 }
 
+//@brief 链表dst追加一个memblock; 返回src;
 inline st_memblock *mempool_append(st_memblock *dst, st_memblock *src)
 {
     if(NULL==dst)
     {
         src->prev = dst;
+        src->next = NULL;
         return src;
     }
     while(NULL!=dst->next) dst = dst->next;
@@ -195,18 +198,17 @@ class CTransacMempool
         m_grow_size = MEMPOOL_GROW_SIZE;
       #endif
         
-        
-        
         m_head_ptr = m_tail_ptr = NULL;
     }
     virtual ~CTransacMempool()
     {
         st_memblock *memblock_ptr=m_head_ptr;
         st_memblock *tmp_blockptr=NULL;
+        //删除链表中各个内存块占用的堆内存
         while(NULL!=memblock_ptr)
         {
             tmp_blockptr = memblock_ptr->next;
-            memblock_delete(memblock_ptr);
+            memblock_delete(memblock_ptr);//删除内存块
             memblock_ptr = tmp_blockptr;
         }
         m_head_ptr = m_tail_ptr = NULL;
@@ -218,7 +220,7 @@ class CTransacMempool
     CTransacMempool &operator=(const CTransacMempool &obj);
   public:
   
-    //功能: 从内存池分配空间;
+    //@brief 从内存池分配空间;
     void *alloc(size_t alloc_size)
     {
         assert(alloc_size>0);
@@ -232,7 +234,7 @@ class CTransacMempool
         void *data_ptr = memblock_alloc(m_tail_ptr, alloc_size);
         return data_ptr;
     }
-    //功能: 释放内存池所有被占用的资源;(不释放内存)
+    //@brief 释放内存池所有被占用的资源;(不释放内存)
     void free()
     {
         st_memblock *memblock_ptr=NULL;
@@ -241,24 +243,29 @@ class CTransacMempool
             memblock_free(memblock_ptr);
         }
         
-        m_tail_ptr = m_head_ptr;
+        m_tail_ptr = m_head_ptr;//此处为了内存池可重复使用
     }
   private:
-    //功能: 校验剩余空间大小; true-剩余空间充足; false-剩余空间不足;
+    //@brief 校验剩余空间大小; true-剩余空间充足; false-剩余空间不足;
     bool check_idle_size(unsigned int alloc_size)
     {
         if(NULL==m_tail_ptr)
             return false;
-        while(NULL!=m_tail_ptr)
+        
+        //找到满足大小要求的内存块
+        st_memblock *memblock_ptr = NULL;
+        for(memblock_ptr = m_tail_ptr; NULL!=memblock_ptr; memblock_ptr = memblock_ptr->next)
         {
-            if(memblock_idlesize(m_tail_ptr)>=(size_t)alloc_size)
+            m_tail_ptr=memblock_ptr;//链表尾部指针后移; 需要防止本次申请内存大于链表内所有内存块的可用空间
+            
+            if(memblock_idlesize(memblock_ptr)>=(size_t)alloc_size)//该内存块空间满足大小要求
                 return true;
-            m_tail_ptr = m_tail_ptr->next;
         }
+        
         return false;
     }
     
-    //功能: 增加新的内存块
+    //@brief 增加新的内存块
     bool append_memblock(int alloc_size)
     {
         int grow_size=sizeof(st_memblock)+alloc_size;
@@ -288,7 +295,7 @@ class CTransacMempool
         }
         else
         {
-            mempool_insert(m_tail_ptr, memblock_ptr);
+            mempool_insert(m_tail_ptr, memblock_ptr, true);
             m_tail_ptr = memblock_ptr;
         }
         
@@ -301,5 +308,11 @@ class CTransacMempool
   private://内存块链表
     st_memblock *m_head_ptr;
     st_memblock *m_tail_ptr;
+#ifdef SINGLE_UNITTEST //单元测试
+  public:
+    st_memblock* get_head_ptr() { return m_head_ptr; }
+    st_memblock* get_tail_ptr() { return m_tail_ptr; }
+    unsigned int get_init_size(){ return m_init_size;}
+#endif
 };
 #endif
