@@ -36,7 +36,7 @@ LIB_DIR:=
 SO_LIBS:=-lstdc++ -lpthread -lrt
 
 #常用文件
-COMMON_SOURCES:= 
+COMMON_SOURCES:= ../mdb_transaction.cpp
 COMMON_OBJS:= $(COMMON_SOURCES:.cpp=.o)
 
 
@@ -45,8 +45,8 @@ OBJS:= $(AUTO_OBJS) $(COMMON_OBJS)
 
 #单元测试
 unittest_FLAG:=1
-unittest_TARGETS= unittest_memblock unittest_mempool 
-unittest_SOURCES:= ./unittest_memblock.cpp ./unittest_mempool.cpp 
+unittest_TARGETS= unittest_memblock unittest_mempool unittest_dbtransaction
+unittest_SOURCES:= ./unittest_memblock.cpp ./unittest_mempool.cpp ./unittest_dbtransaction.cpp
 unittest_OBJS=$(unittest_SOURCES:.cpp=.o)
 
 ifdef unittest_FLAG
@@ -69,9 +69,11 @@ OUTPUT_DIR:=./bin
 all:$(TARGET)
 
 #单元测试构建规则
-unittest_memblock:./unittest_memblock.o
+unittest_memblock:./unittest_memblock.o 
 	$(GCC) -o $@ $(LIB_DIR) $(SO_LIBS)  $^   $(gtest_libs)
-unittest_mempool:./unittest_mempool.o
+unittest_mempool:./unittest_mempool.o 
+	$(GCC) -o $@ $(LIB_DIR) $(SO_LIBS)  $^   $(gtest_libs)
+unittest_dbtransaction:./unittest_dbtransaction.o $(COMMON_OBJS)
 	$(GCC) -o $@ $(LIB_DIR) $(SO_LIBS)  $^   $(gtest_libs)
 
 #$@表示目标; $^表示所有依赖文件; $<表示第一个依赖文件

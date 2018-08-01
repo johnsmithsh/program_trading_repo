@@ -268,7 +268,7 @@ class CTransacMempool
     //@brief 增加新的内存块
     bool append_memblock(int alloc_size)
     {
-        int grow_size=sizeof(st_memblock)+alloc_size;
+        unsigned int grow_size=sizeof(st_memblock)+alloc_size;
         if(NULL==m_tail_ptr)//第一次分配
         {
             if(grow_size<m_init_size)
