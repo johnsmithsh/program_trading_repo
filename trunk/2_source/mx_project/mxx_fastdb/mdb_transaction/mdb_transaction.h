@@ -49,10 +49,14 @@ class CMdbTransaction
      *   []
      */
     int push_record(const char *db_name, const char *tb_name, char opt_type, unsigned int record_uid, void *data_ptr, size_t data_size);
+    ST_TABLE_RECORD * top_record() { return m_transac_record_stack.top(); }
     ST_TABLE_RECORD * pop_record();
     
     //事务回滚或提交后,就不再需要这些数据了,需要清理数据
     void clear_records();
+  private:
+    //不知道怎么想的,std::stack没有clear函数
+    void clear_stack();
   private:
     std::stack<ST_TABLE_RECORD *> m_transac_record_stack;//事务涉及的所有记录
     CTransacMempool *m_mempool_ptr;//内存池,每个事物都有自己独立的内存池

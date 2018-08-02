@@ -9,6 +9,7 @@
 
 #include <string.h>
 #include <stdlib.h>
+#include <assert.h>
  
 //@brief 表示内存池的一个内存块
 typedef struct __st_memblock
@@ -301,7 +302,7 @@ class CTransacMempool
         
         return true;
     }
-    
+  
   private:
     unsigned int m_init_size;//初始大小
     unsigned int m_grow_size;//每次增长大小
