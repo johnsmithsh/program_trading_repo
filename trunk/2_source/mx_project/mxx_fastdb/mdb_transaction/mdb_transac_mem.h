@@ -84,7 +84,7 @@ inline void * memblock_alloc(st_memblock *memblock, size_t alloc_size)
 //@brief 功能: 释放被占用的内存;注:从后向前释放指定大小; 
 inline void  memblock_free(st_memblock *memblock, size_t free_size)
 {
-    assert(free_size>0);
+    //assert(free_size>0);
     if(memblock->used_size<free_size)
         memblock->used_size=0;
     else
