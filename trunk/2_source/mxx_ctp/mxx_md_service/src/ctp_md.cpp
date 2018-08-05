@@ -1,5 +1,9 @@
+#include <stdlib.h>
+#include <string.h>
+
 #include "ctp_md.h"
 #include "app_global_info.h"
+#include "logfile.h"
 
 ///当客户端与交易后台建立起通信连接时（还未登录前），该方法被调用。
 void CCtpMdSpi::OnFrontConnected()
@@ -132,27 +136,53 @@ void CCtpMdSpi::OnRspError(CThostFtdcRspInfoField *pRspInfo, int nRequestID, boo
 ///订阅行情应答
 void CCtpMdSpi::OnRspSubMarketData(CThostFtdcSpecificInstrumentField *pSpecificInstrument, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
+	INFO_MSG("OnRspSubMarketData:requestId[%d], [%s] [%d] [%s]...", nRequestID, pSpecificInstrument->InstrumentID,pRspInfo->ErrorID, pRspInfo->ErrorMsg);
 
+
+	//todo 通知客户端订阅成功
 }
 ///取消订阅行情应答
 void CCtpMdSpi::OnRspUnSubMarketData(CThostFtdcSpecificInstrumentField *pSpecificInstrument, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
+	INFO_MSG("OnRspUnSubMarketData:requestId[%d], [%s] [%d] [%s]...", nRequestID, pSpecificInstrument->InstrumentID,pRspInfo->ErrorID, pRspInfo->ErrorMsg);
 
+
+	//todo 通知客户端取消订阅成功
 }
 ///订阅询价应答
 void CCtpMdSpi::OnRspSubForQuoteRsp(CThostFtdcSpecificInstrumentField *pSpecificInstrument, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
+	INFO_MSG("OnRspSubForQuoteRsp:requestId[%d], [%s] [%d] [%s]...", nRequestID, pSpecificInstrument->InstrumentID,pRspInfo->ErrorID, pRspInfo->ErrorMsg);
 
+
+	//todo 通知客户端询价订阅成功
 }
 ///取消订阅询价应答
 void CCtpMdSpi::OnRspUnSubForQuoteRsp(CThostFtdcSpecificInstrumentField *pSpecificInstrument, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
+	INFO_MSG("OnRspUnSubForQuoteRsp:requestId[%d], [%s] [%d] [%s]...", nRequestID, pSpecificInstrument->InstrumentID,pRspInfo->ErrorID, pRspInfo->ErrorMsg);
 
+
+	//todo 通知客户端取消询价订阅成功
 }
 ///深度行情通知
 void CCtpMdSpi::OnRtnDepthMarketData(CThostFtdcDepthMarketDataField *pDepthMarketData)
 {
-
+	//todo 行情通知客户端或添加到行情队列中供后续处理;
+    if(NULL==pDepthMarketData)
+    {
+        ERROR_MSG("Error: OnRtnDepthMarketData(NULL)");
+        return;
+    }
+    
+    CMarketDataDistributor *pCtpMdDistributor=globalinfo_get_mdDistributor();
+	if(NULL==pCtpMdDistributor)
+    {
+        WARN_MSG("OnRtnDepthMarketData: 找不到行情处理器,无法分发收到的行情");
+		return;
+    }
+    
+    pCtpMdDistributor->process_market_data(pDepthMarketData);
 }
 ///询价通知
 void CCtpMdSpi::OnRtnForQuoteRsp(CThostFtdcForQuoteRspField *pForQuoteRsp)
@@ -162,14 +192,14 @@ void CCtpMdSpi::OnRtnForQuoteRsp(CThostFtdcForQuoteRspField *pForQuoteRsp)
 CCtpMdConnection::CCtpMdConnection()
 {
   m_ctp_status=CTP_SS_INIT;
-  m_md_api=NULL;
-  m_md_spi=NULL;
+  m_pMdApi=NULL;
+  m_pMdSpi=NULL;
 }
 
 CCtpMdConnection::~CCtpMdConnection()
 {
   set_autoconn_flag(false);//防止端口后自动重连;
-  if(NULL==m_md_api)
+  if(NULL==m_pMdApi)
   {
 	  m_pMdApi->Release();
 	  m_pMdApi=NULL;
@@ -188,7 +218,7 @@ int CCtpMdConnection::init(const char *flow_path /*="./ctp_md_path/"*/)
 		return 0;
 	INFO_MSG("初始化行情API...");
 	m_pMdApi=CThostFtdcMdApi::CreateFtdcMdApi(flow_path, false, false);
-	if(NULL=m_pMdApi)
+	if(NULL==m_pMdApi)
 	{
 		ERROR_MSG("Error: 创建行情API实例失败");
 		return -1;
@@ -208,7 +238,7 @@ int CCtpMdConnection::init(const char *flow_path /*="./ctp_md_path/"*/)
 int CCtpMdConnection::release()
 {
 	set_autoconn_flag(false);//防止端口后自动重连;
-	if(NULL==m_md_api)
+	if(NULL==m_pMdApi)
 	{
 		m_pMdApi->Release();
 		//没有delete??
@@ -233,7 +263,7 @@ void CCtpMdConnection::set_tx_date(const char *tx_date)
 int CCtpMdConnection::connect_sync(const char *front_addr, const char *ns_addr)
 {
 	INFO_MSG("连接行情服务器:前置[%s],域名服务器[%s]...", front_addr, ns_addr);
-	if((NULL!=front_addr)&&('\0'!=*front_adddr))
+	if((NULL!=front_addr)&&('\0'!=*front_addr))
 	{
 		m_pMdApi->RegisterFront((char*)front_addr);
 	}
@@ -293,14 +323,14 @@ int CCtpMdConnection::logout_sync()
 	return 0;
 }
 
-int CCtpMdConnection::SubscribeMarketData_sync(std::vector<std::string> contract_vec)
+int CCtpMdConnection::SubscribeMarketData_sync(std::vector<std::string> &contract_vec)
 {
 	if(contract_vec.empty())
 		return 0;
 	int count=contract_vec.size();
-	char (*ppInstrumentID)[32];//每个合约长度为32
+	char **ppInstrumentID = NULL;//每个合约长度为32
 
-	ppInstrumentID=malloc(count*32);
+	ppInstrumentID=(char **)malloc(count*32);
 	if(NULL==ppInstrumentID)
 		return -1;
 
@@ -310,20 +340,23 @@ int CCtpMdConnection::SubscribeMarketData_sync(std::vector<std::string> contract
 	if(rc<0)
 	{
 		ERROR_MSG("Error: API订阅行情失败!rc=[%d]", rc);
-		return rc;
+		//return rc;
 	}
+    
+    free(ppInstrumentID);
+    ppInstrumentID = NULL;
 
 	return rc;
 }
 
-int CCtpMdConnection::UnSubscribeMarketData_sync(std::vector<std::string> contract_vec)
+int CCtpMdConnection::UnSubscribeMarketData_sync(std::vector<std::string> &contract_vec)
 {
 	if(contract_vec.empty())
 		return 0;
 	int count=contract_vec.size();
-	char (*ppInstrumentID)[32];//每个合约长度为32
+	char **ppInstrumentID=NULL;//每个合约长度为32
 
-	ppInstrumentID=malloc(count*32);
+	ppInstrumentID=(char **)malloc(count*32);
 	if(NULL==ppInstrumentID)
 		return -1;
 
@@ -333,21 +366,24 @@ int CCtpMdConnection::UnSubscribeMarketData_sync(std::vector<std::string> contra
 	if(rc<0)
 	{
 		ERROR_MSG("Error: API取消订阅行情失败!rc=[%d]", rc);
-		return rc;
+		//return rc;
 	}
+    
+    free(ppInstrumentID);
+    ppInstrumentID = NULL;
 
 	return rc;
 }
 
 
-int CCtpMdConnection::SubscribeForQuoteRsp_sync(std::vector<std::string> contract_vec)
+int CCtpMdConnection::SubscribeForQuoteRsp_sync(std::vector<std::string> &contract_vec)
 {
 	if(contract_vec.empty())
 		return 0;
 	int count=contract_vec.size();
-	char (*ppInstrumentID)[32];//每个合约长度为32
+	char **ppInstrumentID=NULL;//每个合约长度为32
 
-	ppInstrumentID=malloc(count*32);
+	ppInstrumentID=(char **)malloc(count*32);
 	if(NULL==ppInstrumentID)
 		return -1;
 
@@ -357,20 +393,22 @@ int CCtpMdConnection::SubscribeForQuoteRsp_sync(std::vector<std::string> contrac
 	if(rc<0)
 	{
 		ERROR_MSG("Error: API订阅询价行情失败!rc=[%d]", rc);
-		return rc;
+		//return rc;
 	}
 
+    free(ppInstrumentID);
+    ppInstrumentID = NULL;
 	return rc;
 }
 
-int CCtpMdConnection::UnSubscribeForQuoteRsp_sync(std::vector<std::string> contract_vec)
+int CCtpMdConnection::UnSubscribeForQuoteRsp_sync(std::vector<std::string> &contract_vec)
 {
 	if(contract_vec.empty())
 		return 0;
 	int count=contract_vec.size();
-	char (*ppInstrumentID)[32];//每个合约长度为32
+	char **ppInstrumentID=NULL;//每个合约长度为32
 
-	ppInstrumentID=malloc(count*32);
+	ppInstrumentID=(char **)malloc(count*32);
 	if(NULL==ppInstrumentID)
 		return -1;
 
@@ -380,8 +418,10 @@ int CCtpMdConnection::UnSubscribeForQuoteRsp_sync(std::vector<std::string> contr
 	if(rc<0)
 	{
 		ERROR_MSG("Error: API取消订阅询价行情失败!rc=[%d]", rc);
-		return rc;
+		//return rc;
 	}
 
+    free(ppInstrumentID);
+    ppInstrumentID = NULL;
 	return rc;
 }

@@ -75,21 +75,17 @@ class CCtpMdConnection
     //功能: 连接
     int connect() { return connect_sync(m_front_addr, m_ns_addr); }
     //功能: 登录
-    int login()   { return login_sync(m_user_name, m_user_pwd); }
+    int login()   { return login_sync(m_borker_id, m_user_name, m_user_pwd); }
     //功能: 登出
     int logout()  { return logout_sync();}
 
-    int connect_sync(const char *front_addr, const char *ns_addr);
-    int login_sync(const char *user_name, const char *pwd);
-    int logout_sync();
-
     //功能: 订阅行情;
-    int SubscribeMarketData_sync(std::vector<std::string> contract_vec);
+    int SubscribeMarketData_sync(std::vector<std::string> &contract_vec);
     //功能: 退订行情
-    int UnSubscribeMarketData_sync(std::vector<std::string> contract_vec);
+    int UnSubscribeMarketData_sync(std::vector<std::string> &contract_vec);
 
-    int SubscribeForQuoteRsp_sync(std::vector<std::string> contract_vec);
-    int UnSubscribeForQuoteRsp_sync(std::vector<std::string> contract_vec);
+    int SubscribeForQuoteRsp_sync(std::vector<std::string> &contract_vec);
+    int UnSubscribeForQuoteRsp_sync(std::vector<std::string> &contract_vec);
 
   public:
     //功能:分配请求序号
@@ -114,6 +110,11 @@ class CCtpMdConnection
     char            m_ctp_status;//ctp连接状态
     CThostFtdcMdApi *m_pMdApi;//API请求接口
     CCtpMdSpi       *m_pMdSpi;      //SPI应答处理接口
+    
+  private:
+    int connect_sync(const char *front_addr, const char *ns_addr);
+    int login_sync(const char *broker_id, const char *user_name, const char *pwd);
+    int logout_sync();
   private:
     int  m_requestid;//请求序号
 
@@ -125,8 +126,8 @@ class CCtpMdConnection
     char m_user_pwd[128];//用户密码
     char m_tx_date[16];//交易日期
   private:
-    int m_session_id;
-    int m_front_id;
+    int  m_session_id;
+    int  m_front_id;
     char m_login_time[12];
 };
 #endif
