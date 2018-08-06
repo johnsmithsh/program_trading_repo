@@ -68,8 +68,10 @@ class CCtpMdConnection
   public:
     CCtpMdConnection();
     virtual ~CCtpMdConnection();
+  private:
+    int loadcfg(const char *cfgfile);
   public:
-    int init(const char *flow_path="./ctp_md_path/");
+    int init(const char *cfgfile);
     int release();
 
     //功能: 连接
@@ -118,6 +120,7 @@ class CCtpMdConnection
   private:
     int  m_requestid;//请求序号
 
+    char m_flow_path[256];//!< ctp数据流文件保存路径
     char m_front_addr[64];//前置地址
     char m_ns_addr[64];   //域名服务器地址
 

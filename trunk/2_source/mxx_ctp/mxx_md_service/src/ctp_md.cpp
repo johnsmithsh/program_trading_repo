@@ -191,9 +191,25 @@ void CCtpMdSpi::OnRtnForQuoteRsp(CThostFtdcForQuoteRspField *pForQuoteRsp)
 ///////////////////////////////////////////////////////////////////////////////////
 CCtpMdConnection::CCtpMdConnection()
 {
+  m_bAutoReconn = false;
   m_ctp_status=CTP_SS_INIT;
   m_pMdApi=NULL;
   m_pMdSpi=NULL;
+  
+  
+  m_requestid     = 0;
+  m_flow_path[0]  ='\0';//!< ctp数据流文件保存路径
+  m_front_addr[0] ='\0';//前置地址
+  m_ns_addr[0]    ='\0';   //域名服务器地址
+
+  m_borker_id[0]  ='\0';//期货公司会员号
+  m_user_name[0]  ='\0';//用户名,即user_id
+  m_user_pwd[0]   ='\0';//用户密码
+  m_tx_date[0]    ='\0';//交易日期
+
+  m_session_id    =0;
+  m_front_id      = 0;
+  m_login_time[0] ='\0';
 }
 
 CCtpMdConnection::~CCtpMdConnection()
@@ -212,10 +228,20 @@ CCtpMdConnection::~CCtpMdConnection()
   }
 }
 
-int CCtpMdConnection::init(const char *flow_path /*="./ctp_md_path/"*/)
+int CCtpMdConnection::init(const char *cfgfile)
 {
 	if(NULL!=m_pMdApi)
 		return 0;
+    
+    int rc=0;
+    //加载配置文件
+    rc=load_ini(cfgfile);
+    if(rc<0)
+    {
+        FATAL_MSG("配置文件[%s]加载错误[%d]!", cfgfile, rc);
+        return -1;
+    }
+    
 	INFO_MSG("初始化行情API...");
 	m_pMdApi=CThostFtdcMdApi::CreateFtdcMdApi(flow_path, false, false);
 	if(NULL==m_pMdApi)
@@ -235,9 +261,70 @@ int CCtpMdConnection::init(const char *flow_path /*="./ctp_md_path/"*/)
 	return 0;
 }
 
+int CCtpMdConnection::load_ini(const char *cfgfile)
+{
+    int rc;
+    ConfigFile ini_cfg;
+	rc=ini_cfg.load_cfg_file(cfgfile);
+	if(rc<0)
+	{
+	    FATAL_MSG("打开配置文件[%s]失败! rc=[%d]", cfgfile, rc);
+	    return -1;
+	}
+	
+	char hb_section[]="CTP";
+    memset(m_flow_path, 0, sizeof(m_flow_path));
+	ini_cfg.read_string(hb_section, "FLOW_PATH", m_flow_path, sizeof(m_flow_path)-1, "./ctp_md_path/");//!< ctp数据流文件路径
+    
+
+    memset(m_front_addr, 0, sizeof(m_front_addr));
+	ini_cfg.read_string(hb_section, "FRONT_ADDR", m_front_addr, sizeof(m_front_addr)-1, "");//!< ctp前置地址
+
+    memset(m_ns_addr, 0, sizeof(m_ns_addr));
+	ini_cfg.read_string(hb_section, "NS_ADDR", m_ns_addr, sizeof(m_ns_addr)-1, "");//!< ctp域名服务器地址
+
+    memset(m_borker_id, 0, sizeof(m_borker_id));
+	ini_cfg.read_string(hb_section, "BROKER_ID", m_borker_id, sizeof(m_borker_id)-1, "");//!< 期货公司会员号
+    
+    memset(m_user_name, 0, sizeof(m_user_name));
+	ini_cfg.read_string(hb_section, "USER_NAME", m_user_name, sizeof(m_user_name)-1, "");//!< 用户名
+    
+    memset(m_user_pwd, 0, sizeof(m_user_pwd));
+	ini_cfg.read_string(hb_section, "USER_PWD", m_user_pwd, sizeof(m_user_pwd)-1, "");//!< 用户密码
+    
+	INFO_MSG("[%s]%s=%d", hb_section, "FLOW_PATH",  m_flow_path);
+	INFO_MSG("[%s]%s=%d", hb_section, "FRONT_ADDR", m_front_addr);
+	INFO_MSG("[%s]%s=%s", hb_section, "NS_ADDR",    m_ns_addr);
+	INFO_MSG("[%s]%s=%d", hb_section, "BROKER_ID",  m_borker_id);
+    INFO_MSG("[%s]%s=%d", hb_section, "USER_NAME",  m_user_name);
+	
+	//校验行情参数是否合法
+	{
+	    if(strlen(m_front_addr)<=0)&&(strlen(m_ns_addr)<=0))
+		{
+		    FATAL_MSG("行情前置地址[%s]与行情域名地址[%s]必须存在一个!", "ip");
+			return -3;
+		}
+		
+		if(strlen(m_borker_id)<=0)
+		{
+		    FATAL_MSG("行情配置[%s]%s会员号为空!", hb_section, "BROKER_ID");
+			return -4;
+		}
+		
+		if(strlen(m_user_name)<=0)
+        {
+            FATAL_MSG("行情配置[%s]%s用户名为空!", hb_section, "USER_NAME");
+			return -5;
+        }
+	}
+	
+	return 0;
+}
+
 int CCtpMdConnection::release()
 {
-	set_autoconn_flag(false);//防止端口后自动重连;
+	set_autoconn_flag(false);//防止断开后自动重连;
 	if(NULL==m_pMdApi)
 	{
 		m_pMdApi->Release();

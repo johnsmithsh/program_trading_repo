@@ -20,9 +20,27 @@ CServerManage::~CServerManage()
 int CServerManage::start_service()
 {
     int rc=0;
-    rc=start_heartbeat_thread("./conf/master.ini");//
-    if(rc<0)
+    //rc=start_heartbeat_thread("./conf/master.ini");//
+    //if(rc<0)
+    //    return -1;
+
+    CGlobalInfo *pGlobalInfo = CGlobalInfo::create_instance();
+    if(NULL==pGlobalInfo)
         return -1;
+    
+    rc=pGlobalInfo->init("./conf/md.ini");
+    if(rc<0)
+    {
+        return -2;
+    }
+    
+    CCtpMdConnection *pCtpMd = globalinfo_get_MdConnection();
+    if(NULL==pCtpMd)
+    {
+        return -3;
+    }
+    
+    
     
     return 0;
 }

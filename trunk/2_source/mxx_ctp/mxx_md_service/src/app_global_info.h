@@ -18,6 +18,8 @@ private:
     CGlobalInfo(CGlobalInfo &obj);
     CGlobalInfo &operator=(CGlobalInfo &obj);
 public:
+    int init(const char *cfgfile);
+public:
 	CCtpMdConnection *get_ctp_md() { return m_pUserMdConn; }
 public:
 	CCtpMdConnection *m_pUserMdConn;//行情连接

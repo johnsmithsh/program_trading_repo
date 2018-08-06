@@ -1,7 +1,7 @@
 #ifndef _MXX_SERVER_MANAGE_H_
 #define _MXX_SERVER_MANAGE_H_
 
-//#include "thread_heartbeat.h"
+#include "thread_heartbeat.h"
 class CServerManage
 {
 public:

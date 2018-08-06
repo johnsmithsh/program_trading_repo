@@ -61,3 +61,24 @@ CGlobalInfo::~CGlobalInfo()
     
     m_pUserMdConn = NULL;
 }
+
+int CGlobalInfo::init(const char *cfgfile)
+{
+    if(NULL==m_pUserMdConn)
+    {
+        m_pUserMdConn = new CCtpMdConnection();
+        if(NULL==m_pUserMdConn)
+        {
+            ERROR_MSG("ERROR: faild to new CCtpMdConnection!");
+            return -1;
+        }
+        if(m_pUserMdConn->init(cfgfile)<0)
+        {
+            ERROR_MSG("ERROR: failed to init CCtpMdConnection!");
+            return -2;
+        }
+    }
+    
+    
+    return 0;
+}
