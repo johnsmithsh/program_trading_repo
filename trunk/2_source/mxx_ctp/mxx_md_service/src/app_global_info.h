@@ -21,14 +21,15 @@ public:
     int init(const char *cfgfile);
 public:
 	CCtpMdConnection *get_ctp_md() { return m_pUserMdConn; }
-public:
-	CCtpMdConnection *m_pUserMdConn;//行情连接
+public: //行情相关连接
+	CCtpMdConnection       *m_pUserMdConn;//行情连接
     CMarketDataDistributor m_md_distributor;//行情分发器(线程)
+    map<std::string, ST_MARKET_DATA> m_md_snapshot;//行情快照
     
 public: //单实例模式 该实例在进程中只能有一个
-	static CGlobalInfo*create_instance();
+	static CGlobalInfo* create_instance();
 	static CGlobalInfo* get_instance();
-	static bool destroy_instance();
+	static bool         destroy_instance();
 private:
     //由于该实例在程序启动就创建了,不会存在多线程并发创建
     //故该单实例模式不考虑这个问题
