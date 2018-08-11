@@ -21,6 +21,27 @@ CMarketDataDistributor *globalinfo_get_mdDistributor()
 		return NULL;
 	return &(pGlobalInfo->m_md_distributor);
 }
+
+CTxSessionQue *globalinfo_get_txSession(char session_type)
+{
+    CGlobalInfo *pGlobalInfo=CGlobalInfo::get_instance();
+	if(NULL==pGlobalInfo)
+		return NULL;
+    switch(session_type)
+    {
+        case TXSESSION_TYPE_QUERY:     //类型: 查询
+            return &(pGlobalInfo->m_qry_session_que);
+        case TXSESSION_TYPE_TRADE:     //类型: 交易
+            return &(pGlobalInfo->m_trade_session_que);    //交易队列
+        case TXSESSION_TYPE_BROADCAST: //类型: 广播
+            return &(pGlobalInfo->m_broadcast_session_que);//推送队列
+        case TXSESSION_TYPE_MULTICAST: //类型: 组播    
+            return &(pGlobalInfo->m_multicast_session_que);//组播队列
+        default:
+            return NULL;
+    }
+    return NULL;
+}
 ///////////////////////////////////////////////////////////////////
 CGlobalInfo *CGlobalInfo::m_instance=NULL;
 
