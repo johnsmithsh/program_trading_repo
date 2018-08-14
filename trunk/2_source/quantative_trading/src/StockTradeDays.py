@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from collections import namedtuple;
 from collections import OrderedDict;
 
@@ -14,7 +15,7 @@ class StockTradeDays(object):
         #日期序列
         self.__date_array = self._init_days(start_date, date_array);
         #涨跌幅度(涨幅比例)序列
-        self.__change_array=self._init_change();
+        self.__change_array=self.__init_change();
         #组装字典 OrderedDict
         self.stock_dict=self._init_stock_dict();
 
@@ -29,7 +30,7 @@ class StockTradeDays(object):
         #计算涨跌幅比例
         change_array=map(lambda pp:reduce(lambda a,b:round((b-a)/a,3),pp), pp_array);
         change_array.insert(0,0);#第一天涨幅设置为0
-
+        return change_array;
     def _init_days(self, start_date,date_array):
         """
         :param start_date:初始日期
@@ -94,6 +95,16 @@ class StockTradeDays(object):
 def unit_test():
     #单元测试: 生成函数
     ma000002_trade_days=StockTradeDays([27.12,27.03,26.94,26.87, 27.03,27.45,27.53], 20180506);
+    print(ma000002_trade_days);   #__str__()
+    print("len=%s" % len(ma000002_trade_days)); #__len__()
+    print(ma000002_trade_days[2]); #__getitem__()
 
-if if "__main__" == __name__:
+    #迭代器__iter__
+    from collections import Iterable
+    if isinstance(ma000002_trade_days, Iterable):
+        for day in ma000002_trade_days:
+            print(day);
+
+
+if "__main__" == __name__:
     unit_test();
