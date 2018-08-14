@@ -68,10 +68,10 @@ class CCtpMdConnection
   public:
     CCtpMdConnection();
     virtual ~CCtpMdConnection();
-  private:
-    int loadcfg(const char *cfgfile);
   public:
-    int init(const char *cfgfile);
+    int load_ini(const char *cfgfile);
+  public:
+    int init();
     int release();
 
     //功能: 连接

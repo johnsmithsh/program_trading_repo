@@ -365,8 +365,9 @@ int CCtpMdConnection::connect_sync(const char *front_addr, const char *ns_addr)
 	}
 
 	m_pMdApi->Init();
-	m_pMdApi->Join();
+	//m_pMdApi->Join();
 
+    set_conn_status(CTP_SS_CONNECTING);
 	return 0;
 }
 
@@ -375,7 +376,7 @@ int CCtpMdConnection::login_sync(const char *broker_id, const char *user_name, c
 	CThostFtdcReqUserLoginField req;
 	memset(&req, 0, sizeof(req));
 
-	set_autoconn_flag(true);//断开后自动重连;
+	//set_autoconn_flag(true);//断开后自动重连;
 
 	INFO_MSG("登录行情服务器:经纪商[%s],用户[%s]...", broker_id, user_name);
 	strcpy(req.BrokerID, broker_id);
@@ -387,7 +388,8 @@ int CCtpMdConnection::login_sync(const char *broker_id, const char *user_name, c
 		ERROR_MSG("Error: API登录行情失败!rc=[%d]", rc);
 		return rc;
 	}
-
+    
+    set_conn_status(CTP_SS_LOGINNING);
 	return 0;
 }
 
@@ -407,6 +409,8 @@ int CCtpMdConnection::logout_sync()
 		return rc;
 	}
 
+    set_conn_status(CTP_SS_LOGOUTING);
+    
 	return 0;
 }
 

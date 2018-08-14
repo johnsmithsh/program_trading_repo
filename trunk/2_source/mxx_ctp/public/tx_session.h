@@ -62,8 +62,8 @@ public:
     
     //@brief 设置错误码和错误信息
     void set_code_msg(int retCode, char *szMsg);
-    int get_ret_code()          { return m_retCode; }
-    const char * get_sz_msg()   { return m_sz_msg; }
+    int get_retcode()          { return m_retCode; }
+    const char * get_szmsg()   { return m_szMsg;   }
 private:
     ST_TX_DATA *m_tx_in;//请求数据
     std::deque<ST_TX_DATA *> m_tx_out;//输出数据
