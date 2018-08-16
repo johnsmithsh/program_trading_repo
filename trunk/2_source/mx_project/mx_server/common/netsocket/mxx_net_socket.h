@@ -1,7 +1,10 @@
 #ifndef __MXX_NET_SOCKET_H_
 #define __MXX_NET_SOCKET_H_
 
+#include <arpa/inet.h>
+
 //封装socket错误码;
+#define MXX_SOCKET_INVSOCK     (-1)     //!< 无效socket描述符
 #define MXX_SOCKET_SUCC        (0)      //!< socket操作成功; 
 #define MXX_SOCKET_BUFF_ERROR  (-1000)  //!< 缓冲区错误 如缓冲区指针无效 || 缓存大小<=0;
 #define MXX_SOCKET_CLOSED      (-1001)  //!< socket关闭
@@ -13,14 +16,29 @@
  *
  **/
 
+/**
+ * @brief 创建一个socket端口; 默认tcp端口
+ * @param
+ *
+ * @retval socket描述符; <0失败;
+ **/
+int mxx_socket_create(int domain=AF_INET, int type=SOCK_STREAM);
 
 //功能: 创建一个socket端口; 如果指定ip与端口,则socket绑定ip与端口; 否则只是创建,不做绑定;
 //      即 完成socket()->bind(如果指定ip与端口); 
 //      一般情况下,创建server端指定ip与端口;客户端不需要指定ip与端口;
-//返回值: socket描述符; <=0失败;
+//返回值: socket描述符; <0失败;
 int mxx_socket_create(char *ip, int port);
 
-//功能:删除(mxx_socket_create)创建的socket描述符; 返回值: 0-成功; <0-失败;
+/**
+ * @brief 绑定socket端口;
+ * @param
+ *
+ * @retval 0-成功; <0失败;
+ **/
+int mxx_socket_bind(int sockfd, char *ip, int port, int domain=AF_INET);
+
+//@brief 删除(mxx_socket_create)创建的socket描述符; 返回值: 0-成功; <0-失败;
 int mxx_socket_delete(int sockfd);
 
 //功能: socket文件描述符作为server启动监听; 注:调用前必须保证sockfd完成,socker()->bind() 和setsockopt
@@ -39,7 +57,12 @@ int mxx_socket_listen(int sockfd, int max_conn);
  * 返回值:
  *     socket文件描述符; <0-失败;
  **/
-int mxx_socket_listen(char *ip, int port,int max_conn, int recv_timeout=-1, int send_timeout=-1);
+//int mxx_socket_listen(char *ip, int port,int max_conn, int recv_timeout=-1, int send_timeout=-1);
+
+//@brief 接收客户端连接; 仅支持tcp
+int mxx_socket_accept(int sockfd, int millisecond);
+//@brief 接收客户端连接; 仅支持tcp
+int mxx_socket_accept(int sockfd, struct sockaddr_in *addr, socklen_t *addrlen, int millisecond);
 
 /*
  * 功能: 设置socket的接收超时时间与发送超时时间;
@@ -53,7 +76,7 @@ int mxx_socket_listen(char *ip, int port,int max_conn, int recv_timeout=-1, int 
  *    1. SO_RECVTIMEO/SO_SNDTIMEO不会影响connect超时?; 没有验证;
  *    2. accept设置超时会导致产生的新连接也存在超时时间?; 没有验证;
  **/
-int mxx_socket_set_timeout(int so, int recv_timeout, int send_timeout);
+//int mxx_socket_set_timeout(int so, int recv_timeout, int send_timeout);
 
 //从socket接收tcp数据
 //参数:
@@ -66,14 +89,18 @@ int mxx_socket_recv(int sockfd, char *buffer, int buffsize, int *data_len, int r
 //使用socket发送数据 tcp
 int mxx_socket_send(int sockfd, const char* buffer, int buflen); 
 
+//@brief 连接服务端socket
+int mxx_socket_connect(int sockfd, char *ip, int port, int millisecond);
+//@brief 连接服务端socket
+int mxx_socket_connect(int sockfd, struct sockaddr_in *addr, int addrlen, int millisecond);
 //功能: 连接tcp服务器; udp暂时还不支持
 int mxx_socket_connect(char *ip, int port);
 
 
 // 功能: socket设置非阻塞模式;返回值:<0-失败; 0-成功;
-int mxx_socket_set_nonblock(int so);
+//int mxx_socket_set_nonblock(int so);
 //功能: 获取socket非阻塞模式标记; 返回值: 1-非阻塞模式;0-阻塞模式; <0-失败
-int mxx_socket_get_nonblock(int so);
+//int mxx_socket_get_nonblock(int so);
 
 /////////////////////////////////////////////////////////////////////////////////////////////
 //------------------------------------------------------------------------------------------

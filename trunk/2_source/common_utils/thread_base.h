@@ -11,6 +11,8 @@
 #define THREAD_SS_RUNNING   2 //运行中
 #define THREAD_SS_TERMINATE 3 //终止
 
+typedef pthread_t mxx_thead_t //定义线程id,为了以后兼容
+
 /*
   该类使用方式
   静态分配方式创建该类对象,当程序退出对象作用域时,线程退退出.该情况下,只能通过new方式创建对象,

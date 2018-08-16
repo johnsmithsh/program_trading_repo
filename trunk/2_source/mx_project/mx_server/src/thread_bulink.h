@@ -22,17 +22,30 @@
 #define __MXX_BULINK_THREAD_H_
 
 #include "thread_base.h"
+#include "msg_link_define.h"
+#include "itc_mutex.h"
 
-#define MXX_SOCKET_INVALID_FD  -1 //!<无效socket文件描述符
+#define MXX_SOCKET_INVALID_FD  -1 //!< 无效socket文件描述符
 
 //业务连接状态
 //由于下层业务需要注册业务信息,故必须设置业务状态
 #define LNK_STAT_INIT          0 //!< 初始状态, 线程也没有启动, 即业务并没有连接
 #define LNK_STAT_NONE_SERVICE  1 //!< 线程空运行,没有业务连接; 如服务进程突然崩溃
 #define LNK_STAT_LINKING       2 //!< 连接中,一般注册信息
-#define LNK_STAT_IDLE          3 //!< 服务空间,可以分配任务
-#define LNK_STAT_HIGH_LOAD     4 //!< 高负载, 正忙着呢,不要烦我
-#define LNK_STAT_TERMINATE     5 //!< 已经关闭,有人要求我停止服务; 禁止关联业务服务
+#define LNK_STAT_REGISTERING   3 //!< 等待bu注册
+#define LNK_STAT_IDLE          4 //!< 服务空间,可以分配任务
+#define LNK_STAT_HIGH_LOAD     5 //!< 高负载, 正忙着呢,不要烦我
+#define LNK_STAT_DISCONNING    6 //!< 正在关闭连接
+#define LNK_STAT_TERMINATE     7 //!< 已经关闭,有人要求我停止服务; 禁止关联业务服务
+
+typedef struct __st_bulink_static
+{
+    time_t start_time;
+	unsigned long req_count;//!< 请求计数
+	unsigned long elap_max; //!< 最大处理时间
+	unsigned long elap_min; //!< 最小处理时间
+	unsigned long total_time;//!< 总处理业务时间
+}ST_BUTHREAD_STATIC;
 
 //定义业务服务线程: 每个线程关联一个业务服务进程
 class CBuLinkThread : public Thread_Base
@@ -51,14 +64,57 @@ class CBuLinkThread : public Thread_Base
    public:
      int loadini(char *cfgfile);
 	 int bind_to_socket(int so);
+   public://对外接口
+     //@brief (向该线程)分配任务;
+	 // 注: 处理业务数据就不适用回调函数了,处理结果放入到应答队列,调用者自取处理结果;
+     int send_request_to_bu(unsigned char *data, size_t data_len);
+   
    private:
-     //接收例程
-     int service_routine();
+    //接收例程; 处理来自业务进程的消息
+    int service_routine();
+   private://业务处理函数
+    int wait_buconn();
+	int wait_buregister();
+	//处理来自业务进程消息,每次处理一个;
+	int process_msg();
+	//@brief [连接请求]控制中心处理业务进程发起连接请求;
+    int process_bulink(ST_MSGLINK_BUFF *msg_buff_ptr);
+	//@brief [断开连接](业务进程|控制中心)发起断开连接请求;
+    int process_disconn(ST_MSGLINK_BUFF *msg_buff_ptr);
+	//@brief [注册业务]控制中心处理业务进程发起注册请求;
+	int process_buregister(ST_MSGLINK_BUFF * msg_buff_ptr);
+	
+	//@brief 控制中心处理业务进程的应答数据;
+    //注: 业务进程处理业务请求后,将处理结果返回;
+    int process_buresponse(ST_MSGLINK_BUFF * msg_buff_ptr);
+	//@brief [数据传输]控制中心处理业务进程的传递数据;
+    //注: 业务进程处理业务请求后,将处理结果返回
+    int process_butransfer(ST_MSGLINK_BUFF * msg_buff_ptr);
+	//@brief [数据传输]控制中心处理业务进程的推送数据;
+    //注: 业务进程处理业务请求后,将处理结果返回
+    int process_bupush(ST_MSGLINK_BUFF * msg_buff_ptr);
+   
+   private://辅助业务处理函数
+    //发送应答数据
+    int send_responsedata(){ return -1; }
+	//发送推送数据
+	int send_pushdata(){ return -1; }
+	//发送数据
+	int send_transferdata(){ return -1; }
+   private://辅助函数
+       int check_msg_info(ST_MSGLINK_BUFF *msg_buff_ptr, unsigned short msgid);
+	   int clear_buinfo();
+	   int clear_sockinfo();
    private:
-     //业务相关信息
-     int  m_groupinfo_index;//!< 该服务组(支持业务)信息描述索引; 本服务产生
+       ItcMutex m_mutex;//!< 用于控制send_request_to_bu,防止同时调用该接口函数
+   private:
+     //业务进程相关信息
+     int  m_group_id;//!< 该服务组(支持业务)信息描述索引; 本服务产生
      char m_group_no[64];   //!< 进程所属, 服务组号; 底层服务注册;
 	 char m_buversion[16];  //!< 业务版本信息; 底层服务注册
+	 char m_buprogname[64]; //!< 另一端业务进程的程序名
+	 char m_bu_pid[32];     //!< 业务进程id
+	 int  m_buno;//!< 控制中心分配给业务进程的业务号
 	 
 	 //socket相关信息
      int m_sock_fd;     //!< 服务端口号
@@ -72,6 +128,11 @@ class CBuLinkThread : public Thread_Base
 	 //服务是否在运行
 	 bool m_b_running;//!< 表明服务是否在运行; true-在run循环中;false-退出run循环;
      bool m_stop_flag;//!< 服务停止命令标记; HEARTBEAT_STOP_TRUE-收到停止命令, 服务需要退出; HEARTBEAT_STOP_FALSE-没有收到停止命令,服务可以继续运行;
+	 
+	 ST_BUTHREAD_STATIC m_static;//!< 统计时间
+  private;
+     std::deque<CTaskInfo> m_req_que;//!< 任务请求列表
+	 
 };
 
 #endif

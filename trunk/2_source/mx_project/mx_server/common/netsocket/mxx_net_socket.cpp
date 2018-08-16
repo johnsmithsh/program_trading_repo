@@ -21,6 +21,8 @@
 #include <errno.h>
 #include <assert.h>
 
+#include <errno.h>
+
 #include "os_time.h"
 
 /*
@@ -90,7 +92,55 @@ int mxx_socket_create(char *ip, int port)
    return so_fd;
 }
 
-//功能:删除创建的socket描述符
+/**
+ * @brief 创建一个socket端口; 默认tcp端口
+ * @param
+ *
+ * @retval socket描述符; <0失败;
+ **/
+int mxx_socket_create(int domain/*=AF_INET*/, int type/*=SOCK_STREAM*/)
+{
+   /*
+    * AF_INET, SOCK_STREAM: tcp
+	* AF_INET, SOCK_DDGRAM: udp
+	*/
+   int sockfd=socket(domain, type, 0);
+   if(sockfd<0)
+      return errno;
+   return  sockfd;	  
+}
+
+/**
+ * @brief 绑定socket端口;
+ * @param
+ *
+ * @retval 0-成功; <0失败;
+ **/
+int mxx_socket_bind(int sockfd, char *ip, int port, int domain/*=AF_INET*/)
+{
+    struct sockaddr_in addr;
+	int rc;
+    memset(&addr, 0, sizeof(addr));
+    addr.sin_family=domain;
+    /*
+     * INADDR_ANY:任意地址;
+     * INADDR_NONE:inet_addr("255.255.255"),广播地址;
+     * INADDR_LOOPBACK:inet_addr("127.0.0.1")
+     **/
+    if((NULL==ip)||(strlen(ip)<=0))
+       addr.sin_addr.s_addr=htonl(INADDR_ANY);
+    else
+       addr.sin_addr.s_addr=inet_addr(ip);
+    addr.sin_port=htons(port);
+    if((rc=bind(sockfd, (struct sockaddr *)&addr, sizeof(addr)))<0)
+    {
+       return errno;
+    }
+	
+	return 0;
+}
+
+//@brief 删除创建的socket描述符
 int mxx_socket_delete(int sockfd)
 {
    return close(sockfd);
@@ -101,7 +151,10 @@ int mxx_socket_delete(int sockfd)
 //   0-成功;<0-失败;
 int mxx_socket_listen(int sockfd, int max_conn)
 {
-   return listen(sockfd,max_conn);
+   int rc=listen(sockfd,max_conn);
+   if(rc<0)
+       return errno;
+   return 0;
 }
 
 /*
@@ -115,66 +168,82 @@ int mxx_socket_listen(int sockfd, int max_conn)
  * 返回值:
  *     socket文件描述符; <0-失败;
  **/
-int mxx_socket_listen(char *ip, int port,int max_conn, int recv_timeout/*=10*/, int send_timeout/*=10*/)
+//int mxx_socket_listen(char *ip, int port,int max_conn, int recv_timeout/*=10*/, int send_timeout/*=10*/)
+//{
+//   int so_fd;
+//   int rc;
+//
+//   //输入参数校验
+//   if(max_conn<=0)//最大连接数必须大于0
+//      return -1;
+//   if(port<=0)//端口号必须大于0
+//      return -1;
+//   
+//   //创建socket
+//   so_fd=socket(AF_INET, SOCK_STREAM, 0);
+//   if(so_fd<=0)
+//      return -1;
+//
+//   //bind绑定
+//   struct sockaddr_in addr;
+//   memset(&addr, 0, sizeof(addr));
+//   addr.sin_family=AF_INET;
+//   /*
+//    * INADDR_ANY:任意地址; 
+//    * INADDR_NONE:inet_addr("255.255.255"),广播地址;
+//    * INADDR_LOOPBACK:inet_addr("127.0.0.1")
+//    * */
+//   if((NULL==ip)||(strlen(ip)<=0))
+//     addr.sin_addr.s_addr=htonl(INADDR_ANY);
+//   else
+//     addr.sin_addr.s_addr=inet_addr(ip);
+//   addr.sin_port=htons(port);
+//   if((rc=bind(so_fd, (struct sockaddr *)&addr, sizeof(addr)))<0)
+//   {
+//      close(so_fd);
+//      return -2;
+//   }
+//
+//   //设置超时时间
+//   rc=mxx_socket_set_timeout(so_fd, recv_timeout, send_timeout);
+//   if(rc<0)
+//   {
+//     close(so_fd);
+//      return -3;
+//   }
+//
+//   //启动监听
+//   rc=listen(so_fd,max_conn);
+//   if(rc<0)//启动监听失败
+//   {
+//     close(so_fd);
+//      return -4;
+//   }
+//
+//   
+//   return so_fd;
+//}
+
+
+//@brief 接收客户端连接; 仅支持tcp
+int mxx_socket_accept(int sockfd, int millisecond)
 {
-   int so_fd;
-   int rc;
-
-   //输入参数校验
-   if(max_conn<=0)//最大连接数必须大于0
-      return -1;
-   if(port<=0)//端口号必须大于0
-      return -1;
-   
-   //创建socket
-   so_fd=socket(AF_INET, SOCK_STREAM, 0);
-   if(so_fd<=0)
-      return -1;
-
-   //bind绑定
-   struct sockaddr_in addr;
-   memset(&addr, 0, sizeof(addr));
-   addr.sin_family=AF_INET;
-   /*
-    * INADDR_ANY:任意地址; 
-    * INADDR_NONE:inet_addr("255.255.255"),广播地址;
-    * INADDR_LOOPBACK:inet_addr("127.0.0.1")
-    * */
-   if((NULL==ip)||(strlen(ip)<=0))
-     addr.sin_addr.s_addr=htonl(INADDR_ANY);
-   else
-     addr.sin_addr.s_addr=inet_addr(ip);
-   addr.sin_port=htons(port);
-   if((rc=bind(so_fd, (struct sockaddr *)&addr, sizeof(addr)))<0)
-   {
-      close(so_fd);
-      return -2;
-   }
-
-   //设置超时时间
-   rc=mxx_socket_set_timeout(so_fd, recv_timeout, send_timeout);
-   if(rc<0)
-   {
-     close(so_fd);
-      return -3;
-   }
-
-   //启动监听
-   rc=listen(so_fd,max_conn);
-   if(rc<0)//启动监听失败
-   {
-     close(so_fd);
-      return -4;
-   }
-
-   
-   return so_fd;
+    int so=accept(sockfd,NULL,NULL);
+	if(so<0)
+	    return errno;
+		
+	return so;    
 }
 
-
-//注:
-//   accept前连接断开的情况,尚未想好怎么处理;
-int mxx_socket_accept();
+//@brief 接收客户端连接; 仅支持tcp
+int mxx_socket_accept(int sockfd, struct sockaddr_in *addr, socklen_t *addrlen, int millisecond)
+{
+    int so=accept(sockfd,(struct sockaddr*)addr,addrlen);
+	if(so<0)
+	    return errno;
+		
+	return so;    
+}
 
 //获取浮点数的整数部分
 static int __mxx_intpart_(double d)
@@ -197,32 +266,32 @@ static int __mxx_intpart_(double d)
  *    1. SO_RECVTIMEO/SO_SNDTIMEO不会影响connect超时?; 没有验证;
  *    2. accept设置超时会导致产生的新连接也存在超时时间?; 没有验证;
  **/
-int mxx_socket_set_timeout(int so, int recv_timeout, int send_timeout)
-{
-   struct timeval timeout={0,0};
-   int rc;
-
-   if(recv_timeout>0)
-   {
-      timeout.tv_sec=__mxx_intpart_(recv_timeout/1000);
-      timeout.tv_usec=(recv_timeout%1000)*1000;//微妙
-      rc=setsockopt(so, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(struct timeval));
-      if(rc<0)
-         return -1;
-   }
-
-   if(send_timeout>0)
-   {
-      timeout.tv_sec=__mxx_intpart_(send_timeout/1000);
-      timeout.tv_usec=(send_timeout%1000)*1000;//微妙
-      rc=setsockopt(so, SOL_SOCKET, SO_SNDTIMEO, (char *)&timeout, sizeof(struct timeval));
-      if(rc<0)
-         return -1;
-   }
-
-  return 0;
-   
-}
+//int mxx_socket_set_timeout(int so, int recv_timeout, int send_timeout)
+//{
+//   struct timeval timeout={0,0};
+//   int rc;
+//
+//   if(recv_timeout>0)
+//   {
+//      timeout.tv_sec=__mxx_intpart_(recv_timeout/1000);
+//      timeout.tv_usec=(recv_timeout%1000)*1000;//微妙
+//      rc=setsockopt(so, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(struct timeval));
+//      if(rc<0)
+//         return -1;
+//   }
+//
+//   if(send_timeout>0)
+//   {
+//      timeout.tv_sec=__mxx_intpart_(send_timeout/1000);
+//      timeout.tv_usec=(send_timeout%1000)*1000;//微妙
+//      rc=setsockopt(so, SOL_SOCKET, SO_SNDTIMEO, (char *)&timeout, sizeof(struct timeval));
+//      if(rc<0)
+//         return -1;
+//   }
+//
+//  return 0;
+//   
+//}
 
 //从socket接收tcp数据
 //参数:
@@ -235,14 +304,15 @@ int mxx_socket_recv(int sockfd, char *buffer, int buffsize, int *data_len, int r
    int rc;
    int recvd_len=0;//已接收数据长度
    char *ptr=buffer;
-
+   int err_code=0;
+   
    if( (NULL==buffer) || (buffsize<=0) )
       return -1;
 
-   if(recv_timeout>0)
-   {
-      mxx_socket_set_timeout(sockfd, recv_timeout, -1);
-   }
+   //if(recv_timeout>0)
+   //{
+   //   mxx_socket_set_timeout(sockfd, recv_timeout, -1);
+   //}
 
    while(recvd_len<buffsize)
    {
@@ -257,12 +327,13 @@ int mxx_socket_recv(int sockfd, char *buffer, int buffsize, int *data_len, int r
           break;
        if(rc<0)
        {
+	       err_code=errno;
            //非阻塞的模式,所以当errno为EAGAIN时,表示当前缓冲区已无数据可读
-           if( (errno==EAGAIN) || (EWOULDBLOCK==errno) ) //socket被标记为非阻塞,接收被阻塞或超时
+           if( (EAGAIN==err_code) || (EWOULDBLOCK==err_code) ) //socket被标记为非阻塞,接收被阻塞或超时
              break;
-           else if(EINTR==errno)//在收到数据前,被信号中断
+           else if(EINTR==err_code)//在收到数据前,被信号中断
              continue;
-           return -1;
+           return err_code;
        }
        recvd_len +=rc;
        *data_len = recvd_len;
@@ -274,19 +345,22 @@ int mxx_socket_recv(int sockfd, char *buffer, int buffsize, int *data_len, int r
 //使用socket发送数据 tcp
 int mxx_socket_send(int sockfd, const char* buffer, int buflen) 
 {
-  ssize_t rc;
+  int rc;
   size_t total = buflen;
   const char *p = buffer;
   int retry_count=0;//重试次数
+  
+  int err_code=0;
   while(1) {
     rc = send(sockfd, p, total, 0);
     if(rc < 0) {
+	  err_code=errno;
       // 当send收到信号时,可以继续写,但这里返回-1.
-      if(errno == EINTR)
+      if(err_code == EINTR)
         return -1;
       // 当socket是非阻塞时,如返回此错误,表示写缓冲队列已满,
       // 在这里做延时后再重试.
-      if(errno == EAGAIN) {
+      if(err_code == EAGAIN) {
         ++retry_count;
         if(retry_count>3)//重试超过次数,则退出
             break;
@@ -302,6 +376,36 @@ int mxx_socket_send(int sockfd, const char* buffer, int buflen)
   }
   
   return (buflen-total);
+}
+
+//@brief 连接服务端socket
+int mxx_socket_connect(int sockfd, char *ip, int port, int millisecond)
+{
+   struct sockaddr_in addr;
+   memset(&addr, 0, sizeof(addr));
+   addr.sin_family=AF_INET;
+   addr.sin_port=htons(port);
+   addr.sin_addr.s_addr = inet_addr(ip);
+   
+   int rc=mxx_socket_connect(sockfd, &addr, sizeof(addr), millisecond);//connect(sockfd, &addr, sizeof(addr));
+   if(rc<0)
+   {
+        return errno;
+   }
+   
+   return 0;
+}
+
+//@brief 连接服务端socket
+int mxx_socket_connect(int sockfd, struct sockaddr_in *addr, int addrlen, int millisecond)
+{
+    int rc=connect(sockfd, (struct sockaddr*)&addr, addrlen);
+   if(rc<0)
+   {
+        return errno;
+   }
+   
+   return 0;
 }
 
 //功能: 连接tcp服务器; udp暂时还不支持
@@ -332,26 +436,26 @@ int mxx_socket_connect(char *ip, int port)
 }
 
 
-int mxx_socket_set_nonblock(int sockfd)
-{
-   int flags;
-   flags = fcntl(sockfd, F_GETFL, 0);
-   if(-1==flags)
-      return -1;
-   flags=fcntl(sockfd, flags|O_NONBLOCK);
-   if(-1==flags)
-     return -2;
-   return 0;
-}
-
-int mxx_socket_get_nonblock(int sockfd)
-{
-   int flags;
-   flags = fcntl(sockfd, F_GETFL, 0);
-   if(-1==flags)
-      return -1;
-   return (flags & O_NONBLOCK) ? 1 : 0;
-}
+//int mxx_socket_set_nonblock(int sockfd)
+//{
+//   int flags;
+//   flags = fcntl(sockfd, F_GETFL, 0);
+//   if(-1==flags)
+//      return -1;
+//   flags=fcntl(sockfd, flags|O_NONBLOCK);
+//   if(-1==flags)
+//     return -2;
+//   return 0;
+//}
+//
+//int mxx_socket_get_nonblock(int sockfd)
+//{
+//   int flags;
+//   flags = fcntl(sockfd, F_GETFL, 0);
+//   if(-1==flags)
+//      return -1;
+//   return (flags & O_NONBLOCK) ? 1 : 0;
+//}
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -649,7 +753,9 @@ int mxx_socket_recv_waitall(int sockfd, char *buff, int buffsize, int *rcv_len, 
 	       error_code=errno;//!< 防止多线程,读取后置0;
            //非阻塞的模式,所以当errno为EAGAIN时,表示当前缓冲区已无数据可读
            if( (EAGAIN==error_code) || (EWOULDBLOCK==error_code) ) //socket被标记为非阻塞,接收被阻塞或超时
-             break;
+		   {
+             //break;
+		   }
            else if(EINTR==error_code)//在收到数据前,被信号中断,则继续获取数据
            {
 		   }
@@ -669,7 +775,7 @@ int mxx_socket_recv_waitall(int sockfd, char *buff, int buffsize, int *rcv_len, 
 	       if(difftime_to_millisecond(&t1, &t2)>timeout)
 		       return MXX_SOCKET_TIMEOUT;
 	   }
-   }
+   }//end of while
 
    return MXX_SOCKET_SUCC;
 }

@@ -75,6 +75,7 @@ int recv_que_push(ST_SOCK_FRAME *bin_buff)
    //bin_buff=que->recv_que.front();
    que->mutex.unlock();
    
+   return 0;  
 }
 
 ST_SOCK_FRAME*  recv_que_pop()

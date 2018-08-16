@@ -389,7 +389,7 @@ int set_signal_function()
 	signal(SIGCHLD,SIG_IGN); 
 	*/
 
-	/* ****** Updated by CHENYH at 2004-8-6 16:52:43 ****** 
+	/* 
 	 * Solaris  Solaris缺省操作       Linux       Linux缺省操作 
 	 * SIGHUP   终止                 SIGHUP      忽略 
 	 * SIGINT   终止                 SIGINT      忽略 

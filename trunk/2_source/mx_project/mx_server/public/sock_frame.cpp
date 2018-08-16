@@ -1,3 +1,5 @@
+#include <string.h>
+
 #include "sock_frame.h"
 bool check_is_framehead(ST_SOCK_FRAME_HEAD *frame_head)
 {

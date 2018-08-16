@@ -45,11 +45,15 @@ COMMON_SOURCES:= common/os_path.cpp common/ConfigFile.cpp \
 				 common/concurrency/itc_mutex.cpp \
                  common/thread_base.cpp \
 				 common/netsocket/mxx_net_socket.cpp \
+				 public/msg_link_function.cpp \
+				 public/sock_frame.cpp \
+				 public/svr_link.cpp \
                  $(LOG_SRCS)
 COMMON_OBJS:= $(COMMON_SOURCES:.cpp=.o)
 
 PRJ_SRC=src/main.cpp src/thread_heartbeat.cpp src/servermanage.cpp src/thread_recv.cpp \
-        src/bufuncinfo.cpp src/bugroupinfo.cpp 
+        src/bufuncinfo.cpp src/bugroupinfo.cpp src/bufuncmanage.cpp \
+		src/thread_bulink.cpp
 PRJ_OBJS=$(PRJ_SRC:.cpp=.o)
 
 SOURCES:=$(COMMON_SOURCES) $(AUTO_SOURCES)

@@ -4,8 +4,8 @@
 
 #include "mxx_net_socket.h"
 #include "msg_link_define.h"
-#include "svr_link.h"
 #include "msg_link_function.h"
+#include "svr_link.h"
 
 int msglink_send(int so, const unsigned char *buff, size_t data_len, char *errmsg)
 {
@@ -324,7 +324,7 @@ int svrlink_connect(SVRLINK_HANDLE svrlinkhandle,  char *ip, int port, char *err
         return -5;
     }
     MSG_ANS_CONN *ans_info_ptr = (MSG_ANS_CONN*)msg_buff.data_buff;
-    if(MSGLINK_YES!=ans_info_ptr->if_succ)//连接失败
+    if(C_YES!=ans_info_ptr->if_succ)//连接失败
     {
         if(NULL!=errmsg) 
             sprintf(errmsg, "控制中心[%s:%d]拒绝连接", ip, port);
@@ -387,7 +387,7 @@ int svrlink_register_function(SVRLINK_HANDLE svrlinkhandle, char *register_info,
             sprintf(errmsg, "bu=>cc, 构建业务功能注册数据失败,rc=[%d]", rc);
         return -2;
     }
-    rc=msglink_pkg_data_append((unsigned char *)register_info, len, (unsigned char *)&msg_buff, sizeof(msg_buff), errmsg);
+    rc=msglink_pkg_data_append((unsigned char *)&msg_buff, sizeof(msg_buff), (unsigned char *)register_info, len, errmsg);
     if(rc<0)
     {
         if(NULL!=errmsg) 
@@ -428,7 +428,7 @@ int svrlink_register_function(SVRLINK_HANDLE svrlinkhandle, char *register_info,
         return -5;
     }
     MSG_ANS_REGFUNC *ans_info_ptr = (MSG_ANS_REGFUNC*)msg_buff.data_buff;
-    if(MSGLINK_YES!=ans_info_ptr->if_succ)//连接失败
+    if(C_YES!=ans_info_ptr->if_succ)//连接失败
     {
         if(NULL!=errmsg) 
             sprintf(errmsg, "控制中心拒绝连接");
@@ -468,13 +468,13 @@ int svrlink_request(SVRLINK_HANDLE svrlinkhandle, unsigned char *data_ptr, size_
     ST_MSGLINK_BUFF msg_buff;
     memset(&msg_buff, 0, sizeof(msg_buff.head)+sizeof(msg_buff.commoninfo));
     
-    rc=msglink_pkg_head_init(MSGTYPE_REQ_REQUEST, (unsigned char *)&msg_buff, sizeof(ST_MSGLINK_BUFF), errmsg);
-    rc=msglink_pkg_conninfo(svr_link->link_info.bcc_id, svr_link->link_info.bu_no, svr_link->link_info.group_no, (unsigned char *)&msg_buff, sizeof(ST_MSGLINK_BUFF), errmsg);
+    rc=msglink_pkg_head_init((unsigned char *)&msg_buff, sizeof(ST_MSGLINK_BUFF), MSGTYPE_REQ_REQUEST, errmsg);
+    rc=msglink_pkg_conninfo((unsigned char *)&msg_buff, sizeof(ST_MSGLINK_BUFF), svr_link->link_info.bcc_id, svr_link->link_info.bu_no, svr_link->link_info.group_no, errmsg);
     
     //设置控制信息...
     
     //添加业务数据
-    rc=msglink_pkg_data_append(data_ptr, data_len, (unsigned char *)&msg_buff, sizeof(ST_MSGLINK_BUFF), errmsg);
+    rc=msglink_pkg_data_append((unsigned char *)&msg_buff, sizeof(ST_MSGLINK_BUFF), data_ptr, data_len, errmsg);
     if(rc<0)
         return rc;
     
@@ -516,13 +516,13 @@ int svrlink_transfer(SVRLINK_HANDLE svrlinkhandle, unsigned char *data_ptr, int 
     ST_MSGLINK_BUFF msg_buff;
     memset(&msg_buff, 0, sizeof(msg_buff.head)+sizeof(msg_buff.commoninfo));
     
-    rc=msglink_pkg_head_init(MSGTYPE_DATA, (unsigned char *)&msg_buff, sizeof(ST_MSGLINK_BUFF), errmsg);
-    rc=msglink_pkg_conninfo(svr_link->link_info.bcc_id, svr_link->link_info.bu_no, svr_link->link_info.group_no, (unsigned char *)&msg_buff, sizeof(ST_MSGLINK_BUFF), errmsg);
+    rc=msglink_pkg_head_init((unsigned char *)&msg_buff, sizeof(ST_MSGLINK_BUFF), MSGTYPE_DATA, errmsg);
+    rc=msglink_pkg_conninfo((unsigned char *)&msg_buff, sizeof(ST_MSGLINK_BUFF), svr_link->link_info.bcc_id, svr_link->link_info.bu_no, svr_link->link_info.group_no, errmsg);
 
     //设置控制信息...
     
     //添加业务数据
-    rc=msglink_pkg_data_append(data_ptr, data_len, (unsigned char *)(&msg_buff), sizeof(ST_MSGLINK_BUFF), errmsg);
+    rc=msglink_pkg_data_append((unsigned char *)&msg_buff, sizeof(ST_MSGLINK_BUFF), data_ptr, data_len, errmsg);
     if(rc<0)
         return rc;
     
