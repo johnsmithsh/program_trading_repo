@@ -7,46 +7,222 @@
  * 定义数据结构struct运行时说明信息
  * 用于接口协议定义
  *
+ *  根据fastdb的class.h改写
+ *  为了在程序中同时使用fastdb与rtti,宏定义需要区分,最好有单独的命名空间,与fastdb宏定义区分开
+ *
  *  名字说明:
  *     data_type: 数据类型
  *     field: 字段,struct每个字段定义
  *     pack:  struct结构体,没有嵌套定义
  *     sbp: 多个pack组成一个sbp 
  **/
+//定义rtti命名空间即相关宏定义
+#define USE_NAMESPACES //默认使用命名空间
+#ifdef USE_NAMESPACES 
+#define BEGIN_RTTI_NAMESPACE namespace ns_rtti {
+#define END_RTTI_NAMESPACE }
+#define USE_RTTI_NAMESPACE using namespace ns_rtti;
+#define RTTI_NS ns_rtti
+#else //不使用命名空间
+#define BEGIN_RTTI_NAMESPACE
+#define END_RTTI_NAMESPACE
+#define USE_RTTI_NAMESPACE 
+#define RTTI_NS
+#endif
+////////////////////////////////////////////////////////////
 
+/**
+ * 宏用于描述一个字段信息
+ * 定义一个变量并设置字段类型
+ */
+#define RTTI_FIELD(x, index) \
+    (*RTTI_NS::setDescribeFieldType(new RTTI_NS::rttiFieldDescriptor(#x, (char*)&x-(char*)this, \
+                                                                  sizeof(x), index), x))
+
+/**
+ * Macro used to describe fields of the struct. Use <code>RTTI_FIELD</code>...
+ * macros separated by comma inside this macro to describe all fields of the struct
+ * 宏用于描述结构体每个字段信息
+ * 定义一个结构体变量,描述一个结构体下每个字段信息
+ * 定义一个函数,该函数向结构体添加每个字段的信息;
+ */
+#define RTTI_TYPE_DESCRIPTOR(fields) \
+    RTTI_NS::rttiFieldDescriptor* rttiDescribeComponents(RTTI_NS:rttiFieldDescriptor*) { \
+        return &fields; \
+    } \
+    static RTTI_NS::rttiStDescriptor stDescriptor
+
+    
+#define RTTI_REGISTER_IN(st_name, database) \
+    GET_TABLE_DESC_PREFIX RTTI_NS::dbTableDescriptor* dbGetTableDescriptor GET_TABLE_DESC_PARAM(table) \
+      { return &table::dbDescriptor; }            \
+    static RTTI_NS::dbFieldDescriptor* dbDescribeComponentsOf##table() \
+      { return ((table*)0)->dbDescribeComponents(NULL); }     \
+    RTTI_NS::dbTableDescriptor table::dbDescriptor(#table, database, sizeof(table), \
+                                          &dbDescribeComponentsOf##table)
 ////////////////////////////////////////////////////////////
 //
 //
 //支持的数据类型
-enum RTTI_DATA_TYPE
-{
-   RDT_CHAR=1,
-   RDT_UCHAR=2,
-   RDT_INT2=3,
-   RDT_UINT2=4,
-   RDT_INT4=5,
-   RDT_UINT4=6, //
-   RDT_LONG=7, //long
-   RDT_DOUBLE=8, //double
-   RDT_STR=9, //字符串
-   RDT_VAR_STR=10 //变长字符串
-};
+//enum RTTI_DATA_TYPE
+//{
+//   RDT_UNKONOWN=0,
+//   RDT_CHAR=1,
+//   RDT_UCHAR=2,
+//   RDT_INT2=3,
+//   RDT_UINT2=4,
+//   RDT_INT4=5,
+//   RDT_UINT4=6, //
+//   RDT_LONG=7, //long
+//   RDT_DOUBLE=8, //double
+//   RDT_STR=9, //字符串
+//   RDT_VAR_STR=10 //变长字符串
+//};
 
 
 //字段信息描述
-typedef struct field_desc
+typedef struct __st_field
 {
-   int field_index;//字段索引,表示字段在pack中的定义顺序;
-   RTTI_DATA_TYPE field_data_type;//字段类型
-   char field_name[64];//字段在pack中的名字
-   char field_comment[64];//字段说明,
-   int count;//元素个数,用于表示一个数组 
+    //支持的数据类型
+    enum RTTI_DATA_TYPE
+    {
+       RDT_UNKONOWN=0,
+       RDT_CHAR=1,
+       RDT_UCHAR=2,
+       RDT_INT2=3,
+       RDT_UINT2=4,
+       RDT_INT4=5,
+       RDT_UINT4=6, //
+       RDT_LONG=7, //long
+       RDT_ULONG=8,
+       RDT_FLOAT=9,
+       RDT_DOUBLE=9, //double
+       RDT_STR=10, //字符串 char []
+       RDT_VAR_STR=11, //变长字符串
+       RDT_struct =12,
+       RDT_stdStr =13,//std::string
+    };
+    
+    int            field_index;//字段索引,表示字段在struct中的定义顺序;
+    RTTI_DATA_TYPE field_data_type;//字段类型
+    char           field_name[64];//字段在pack中的名字
+    char           field_comment[64];//字段说明,
+    int            count;//元素个数,用于表示一个数组 
   
-   int st_offset;//字段在struct中的偏移(struct定义) 
-   int offset;//字段在序列流中的偏移(用于结构体序列化)
-   int size;//字段大小;
-}ST_FIELD_DESC;
+    int            st_offset;       //字段在struct中的偏移(struct定义) 
+    int            proto_offset;   //字段在序列流中的偏移(用于结构体序列化)
+    int            size;           //字段大小;
 
+    struct __st_field *prev;
+    struct __st_field *next;
+   
+}ST_FIELD_DESC,st_field_t;
+//////////////////////////////////////////////////////////
+//定义一个字段信息类
+class rttiFieldDescriptor
+{
+  public:
+    rttiFieldDescriptor(const char *field_name, size_t offset, size_t size, int index);
+    virtual ~rttiFieldDescriptor();
+  public:
+    st_field_t m_field;
+    
+    //rttiFieldDescriptor* components;//subbcomponents of the fields
+};
+
+//template<class T>
+//inline rttiFieldDescriptor* setDescribeFieldType(rttiFieldDescriptor* fd, T& x)
+//{
+//    fd->field_data_type = st_field_t::RDT_struct;
+//    if ((fd->components = x.dbDescribeComponents(fd)) != NULL) {
+//        fd->elemSize = fd->components->dbsSize;
+//    }
+//    return fd;
+//}
+inline rttiFieldDescriptor* setDescribeFieldType(rttiFieldDescriptor* fd, char&)
+{
+    fd->field_data_type = st_field_t::RDT_CHAR;
+    return fd;
+}
+inline rttiFieldDescriptor* setDescribeFieldType(rttiFieldDescriptor* fd, unsigned char&)
+{
+    fd->field_data_type = st_field_t::RDT_UCHAR;
+    return fd;
+}
+inline rttiFieldDescriptor* setDescribeFieldType(rttiFieldDescriptor* fd, short&)
+{
+    fd->field_data_type = st_field_t::RDT_INT2;
+    return fd;
+}
+inline rttiFieldDescriptor* setDescribeFieldType(rttiFieldDescriptor* fd, unsigned short&)
+{
+    fd->field_data_type = st_field_t::RDT_UINT2;
+    return fd;
+}
+inline rttiFieldDescriptor* setDescribeFieldType(rttiFieldDescriptor* fd, int&)
+{
+    fd->field_data_type = st_field_t::RDT_INT4;
+    return fd;
+}
+inline rttiFieldDescriptor* setDescribeFieldType(rttiFieldDescriptor* fd, unsigned int&)
+{
+    fd->field_data_type = st_field_t::RDT_UINT4;
+    return fd;
+}
+inline rttiFieldDescriptor* setDescribeFieldType(rttiFieldDescriptor* fd, long&)
+{
+    fd->field_data_type = st_field_t::RDT_LONG;
+    return fd;
+}
+inline rttiFieldDescriptor* setDescribeFieldType(rttiFieldDescriptor* fd, unsigned long&)
+{
+    fd->field_data_type = st_field_t::RDT_ULONG;
+    return fd;
+}
+inline rttiFieldDescriptor* setDescribeFieldType(rttiFieldDescriptor* fd, float&)
+{
+    fd->field_data_type = st_field_t::RDT_FLOAT;
+    return fd;
+}
+inline rttiFieldDescriptor* setDescribeFieldType(rttiFieldDescriptor* fd, double&)
+{
+    fd->field_data_type = st_field_t::RDT_DOUBLE;
+    return fd;
+}
+//多维数组
+//inline rttiFieldDescriptor* setDescribeFieldType(rttiFieldDescriptor* fd, rectangle&)
+//{
+//    fd->field_data_type = st_field_t::tpRectangle;
+//    fd->alignment = sizeof(coord_t);
+//    return fd;
+//}
+//#ifdef USE_STD_STRING
+inline rttiFieldDescriptor* setDescribeFieldType(rttiFieldDescriptor* fd, std::string&)
+{
+    return fd->setStringType(st_field_t::RDT_stdStr);
+}
+//inline rttiFieldDescriptor* setDescribeFieldType(rttiFieldDescriptor* fd, std::wstring&)
+//{
+//    return fd->setWStringType(st_field_t::tpStdWString);
+//}
+//#endif
+inline rttiFieldDescriptor* setDescribeFieldType(rttiFieldDescriptor* fd, char const*&)
+{
+    return fd->setStringType(st_field_t::RDT_STR);
+}
+inline rttiFieldDescriptor* setDescribeFieldType(rttiFieldDescriptor* fd, char*&)
+{
+    return fd->setStringType(st_field_t::RDT_STR);
+}
+
+//inline rttiFieldDescriptor* setDescribeFieldType(rttiFieldDescriptor* fd, wchar_t const*&)
+//{
+//    return fd->setWStringType(st_field_t::tpWString);
+//}
+//inline rttiFieldDescriptor* setDescribeFieldType(rttiFieldDescriptor* fd, wchar_t*&)
+//{
+//    return fd->setWStringType(st_field_t::tpWString);
+//}
 ///////////////////////////////////////////////////////////
 class CFieldDescIterator;//下面定义
 
@@ -133,6 +309,7 @@ class CFieldDescriptor
     //  0-成功; <0-不存在;
     int get_field(char *name, ST_FIELD_DESC *field_desc);
     ST_FIELD_DESC *get_field_ptr(char *name);//以指针方式返回
+    
   private:
     std::vector<ST_FIELD_DESC> m_field_list;
     
