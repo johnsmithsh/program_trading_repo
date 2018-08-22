@@ -23,7 +23,6 @@ CFieldDescriptor::~CFieldDescriptor()
 
 int CFieldDescriptor::append_field(RTTI_DATA_TYPE data_type, char *name, char *comment, int st_offset, int offset, int size, int count)
 {
-  
   ST_FIELD_DESC field_desc;
   //校验数据类型是否合法
   if( (RDT_CHAR!=data_type) 
@@ -74,6 +73,24 @@ int CFieldDescriptor::append_field(RTTI_DATA_TYPE data_type, char *name, char *c
    }
    
    return this->append_field(data_type, name, comment, st_offset, offset, size, 1);
+}
+
+ST_FIELD_DESC * CFieldDescriptor::add_field(char *name, char *comment, int st_offset, int size)
+{
+  ST_FIELD_DESC field_desc;
+  memset(&field_desc, 0, sizeof(field_desc));
+  field_desc.field_index      = m_field_list.size();
+  field_desc.field_data_type  = st_field_t::RDT_UNKONOWN;
+  strncpy(field_desc.field_name,       name,     sizeof(field_desc.field_name)-1);
+  if(NULL!=comment) 
+      strncpy(field_desc.field_comment, comment, sizeof(field_desc.field_comment)-1);
+  field_desc.count      = 1;
+  field_desc.st_offset  = st_offset;
+  field_desc.offset     = st_offset;
+  field_desc.size       = size;
+  m_field_list.push_back(field_desc);
+  
+  return m_field_list.end();
 }
 
 /**

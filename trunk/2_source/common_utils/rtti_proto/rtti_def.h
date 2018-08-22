@@ -2,7 +2,7 @@
 #define MXX_RTTI_DEFINE_H_
 
 #include <vector>
-
+#include "rtti_macro.h"
 /*
  * 定义数据结构struct运行时说明信息
  * 用于接口协议定义
@@ -14,21 +14,7 @@
  *     data_type: 数据类型
  *     field: 字段,struct每个字段定义
  *     pack:  struct结构体,没有嵌套定义
- *     sbp: 多个pack组成一个sbp 
  **/
-//定义rtti命名空间即相关宏定义
-#define USE_NAMESPACES //默认使用命名空间
-#ifdef USE_NAMESPACES 
-#define BEGIN_RTTI_NAMESPACE namespace ns_rtti {
-#define END_RTTI_NAMESPACE }
-#define USE_RTTI_NAMESPACE using namespace ns_rtti;
-#define RTTI_NS ns_rtti
-#else //不使用命名空间
-#define BEGIN_RTTI_NAMESPACE
-#define END_RTTI_NAMESPACE
-#define USE_RTTI_NAMESPACE 
-#define RTTI_NS
-#endif
 ////////////////////////////////////////////////////////////
 
 /**
@@ -99,7 +85,7 @@ typedef struct __st_field
        RDT_DOUBLE=9, //double
        RDT_STR=10, //字符串 char []
        RDT_VAR_STR=11, //变长字符串
-       RDT_struct =12,
+       RDT_struct =12, //结构体变量
        RDT_stdStr =13,//std::string
     };
     
@@ -118,14 +104,40 @@ typedef struct __st_field
    
 }ST_FIELD_DESC,st_field_t;
 //////////////////////////////////////////////////////////
+//第一种实现方式
 //定义一个字段信息类
 class rttiFieldDescriptor
 {
   public:
     rttiFieldDescriptor(const char *field_name, size_t offset, size_t size, int index);
     virtual ~rttiFieldDescriptor();
+    
+  public:
+    /**
+     * @brief 记录类实例在数据库记录中的大小
+     * @param
+     *    [in]base:数据表类实例的指针
+     *    [in]offs:记录固定部分大小,如记录头???
+     * @note
+     *   dbFieldDescriptor::next与dbFieldDescriptor::prev构成一个环;
+     *   fastdb实现比较巧妙,采用next知道next==this时停止,按照环的方式处理;
+     *   这种方式不支持随机读写;
+     *   由于struct不包括指针,故此处可以不用实现;
+     **/
+    //size_t calculateRecordSize(byte* base, size_t offs);
+    
+    size_t calculateStructSize();
+    
+    //@brief 根据字段名找到对应的字段信息
+    rttiFieldDescriptor *findfield(const char *name);
+    rttiFieldDescriptor *findfield(int index);
+    
+    //@brief 程序启动后不会修改字段,故不考虑移除情况
   public:
     st_field_t m_field;
+    
+    rttiFieldDescriptor *prev;
+    rttiFieldDescriptor *next;
     
     //rttiFieldDescriptor* components;//subbcomponents of the fields
 };
@@ -223,10 +235,13 @@ inline rttiFieldDescriptor* setDescribeFieldType(rttiFieldDescriptor* fd, char*&
 //{
 //    return fd->setWStringType(st_field_t::tpWString);
 //}
-///////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//第二种实现方式
+//发现第一种实现无法实现根据名字或存储随机读取
 class CFieldDescIterator;//下面定义
 
-//该类描述一个pack中所有的字段定义信息
+//该类描述一个struct中所有的字段定义信息
+//与fastdb每个类实例表示一个字段不同,该类实例包含struct中所有的字段信息
 class CFieldDescriptor
 {
   public:
@@ -255,6 +270,8 @@ class CFieldDescriptor
     //功能: 添加一个字段定义, 偏移offset根据最后一个字段自动计算; 注:默认字节对齐方式; 暂时未考虑其他对齐方式
     int append_field(RTTI_DATA_TYPE data_type, char *name, char *comment, int st_offset, int size);
 
+    ST_FIELD_DESC * add_field(char *name, char *comment, int st_offset, int size);
+    
     //这两个函数暂时不需要
     //int del_field(int index);
     //int del_field(char *name);
@@ -270,6 +287,8 @@ class CFieldDescriptor
     int add_double(char *name, char *comment, int st_offset)        { return append_field(RDT_DOUBLE, name, comment, st_offset, sizeof(double)); }
     int add_str(char *name, char *comment, int st_offset, int size) { return append_field(RDT_STR,    name, comment, st_offset, size); }
     int add_varstr(char *name, char *comment, int st_offset)        { return append_field(RDT_VAR_STR,name, comment, st_offset, 1024); }
+    
+    
   public:
     //返回字段个数
     int count() { return m_field_list.size(); }
@@ -298,17 +317,20 @@ class CFieldDescriptor
     //  [in]index:字段索引
     //返回值:
     //   0-成功; <0-不存在;
-    int get_field(int index, ST_FIELD_DESC *field_desc);
-    ST_FIELD_DESC &get_field(int index);//以引用方式返回
-    ST_FIELD_DESC *get_field_ptr(int index);//以指针方式返回
+    int                  get_field(int index, ST_FIELD_DESC *field_desc);
+    ST_FIELD_DESC       &get_field(int index);//以引用方式返回
+    const ST_FIELD_DESC *get_field_ptr(int index);//以指针方式返回
 
     //功能:获取字段定义
     //参数:
     //  [in]name:字段名
     //返回值:
     //  0-成功; <0-不存在;
-    int get_field(char *name, ST_FIELD_DESC *field_desc);
-    ST_FIELD_DESC *get_field_ptr(char *name);//以指针方式返回
+    int                  get_field(char *name, ST_FIELD_DESC *field_desc);
+    const ST_FIELD_DESC *get_field_ptr(char *name);//以指针方式返回
+    
+    void *convert_serial2struct(unsigned char *src, size_t src_size, unsigned char *dst, size_t dst_size);
+    void *convert_struct2serial(unsigned char *src, size_t src_size, unsigned char *dst, size_t dst_size);
     
   private:
     std::vector<ST_FIELD_DESC> m_field_list;
@@ -319,6 +341,71 @@ class CFieldDescriptor
     CFieldDescriptor::iterator begin();
     CFieldDescriptor::iterator end();
 };
+
+inline ST_FIELD_DESC* setDescribeFieldType(ST_FIELD_DESC* fd, char&)
+{
+    fd->field_data_type = st_field_t::RDT_CHAR;
+    return fd;
+}
+inline ST_FIELD_DESC* setDescribeFieldType(ST_FIELD_DESC* fd, unsigned char&)
+{
+    fd->field_data_type = st_field_t::RDT_UCHAR;
+    return fd;
+}
+inline ST_FIELD_DESC* setDescribeFieldType(ST_FIELD_DESC* fd, short&)
+{
+    fd->field_data_type = st_field_t::RDT_INT2;
+    return fd;
+}
+inline ST_FIELD_DESC* setDescribeFieldType(ST_FIELD_DESC* fd, unsigned short&)
+{
+    fd->field_data_type = st_field_t::RDT_UINT2;
+    return fd;
+}
+inline ST_FIELD_DESC* setDescribeFieldType(ST_FIELD_DESC* fd, int&)
+{
+    fd->field_data_type = st_field_t::RDT_INT4;
+    return fd;
+}
+inline ST_FIELD_DESC* setDescribeFieldType(ST_FIELD_DESC* fd, unsigned int&)
+{
+    fd->field_data_type = st_field_t::RDT_UINT4;
+    return fd;
+}
+inline ST_FIELD_DESC* setDescribeFieldType(ST_FIELD_DESC* fd, long&)
+{
+    fd->field_data_type = st_field_t::RDT_LONG;
+    return fd;
+}
+inline ST_FIELD_DESC* setDescribeFieldType(ST_FIELD_DESC* fd, unsigned long&)
+{
+    fd->field_data_type = st_field_t::RDT_ULONG;
+    return fd;
+}
+inline ST_FIELD_DESC* setDescribeFieldType(ST_FIELD_DESC* fd, float&)
+{
+    fd->field_data_type = st_field_t::RDT_FLOAT;
+    return fd;
+}
+inline ST_FIELD_DESC* setDescribeFieldType(ST_FIELD_DESC* fd, double&)
+{
+    fd->field_data_type = st_field_t::RDT_DOUBLE;
+    return fd;
+}
+
+inline ST_FIELD_DESC* setDescribeFieldType(ST_FIELD_DESC* fd, std::string&)
+{
+    return fd->field_data_type = st_field_t::RDT_stdStr;
+}
+
+inline ST_FIELD_DESC* setDescribeFieldType(ST_FIELD_DESC* fd, char const*&)
+{
+    return fd->field_data_type = st_field_t::RDT_STR;
+}
+inline ST_FIELD_DESC* setDescribeFieldType(ST_FIELD_DESC* fd, char*&)
+{
+    return fd->field_data_type = st_field_t::RDT_STR;
+}
 
 //迭代器元素指针
 //template<typename T>
