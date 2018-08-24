@@ -97,7 +97,7 @@ typedef struct __st_field
   
     int            st_offset;       //字段在struct中的偏移(struct定义) 
     int            proto_offset;   //字段在序列流中的偏移(用于结构体序列化)
-    int            size;           //字段大小;
+    int            field_size;     //字段大小;
 
     struct __st_field *prev;
     struct __st_field *next;
@@ -125,14 +125,38 @@ class rttiFieldDescriptor
      *   由于struct不包括指针,故此处可以不用实现;
      **/
     //size_t calculateRecordSize(byte* base, size_t offs);
+    //size_t calculateStructSize();
     
-    size_t calculateStructSize();
+    st_field_t *get_field_info() { return &m_field; }
     
-    //@brief 根据字段名找到对应的字段信息
-    rttiFieldDescriptor *findfield(const char *name);
-    rttiFieldDescriptor *findfield(int index);
-    
+    //@brief 逗号运算符: 构建一个链表
+    //@note field的prev和next必须有意义,如果是单个节点,则prev=next=this;
+    rttiFieldDescriptor& operator, (rttiFieldDescriptor& field) 
+    {
+        rttiFieldDescriptor* tail = field.prev;
+        tail->next = this;
+        prev->next = &field;
+        field.prev = prev;
+        prev = tail;
+        return *this;
+    }
     //@brief 程序启动后不会修改字段,故不考虑移除情况
+  public:
+    //@brief 链表操作: 根据字段名找到对应的描述信息
+    rttiFieldDescriptor *find_field(const char *name);
+    //@brief 链表操作: 根据索引找到对应的描述信息
+    rttiFieldDescriptor *find_field(int index);
+    
+    //@brief 获取序列化大小
+    int get_serial_size();
+    //获取struct结构体大小
+    int get_st_size();
+    
+    //@brief 链表操作: serial数据转换为应用程序使用的struct数据
+    void *convert_serial2struct(unsigned char *src, size_t src_size, unsigned char *dst, size_t dst_size);
+    //@brief 链表操作: struct数据转换为serial数据
+    void *convert_struct2serial(unsigned char *src, size_t src_size, unsigned char *dst, size_t dst_size);
+    
   public:
     st_field_t m_field;
     
@@ -317,17 +341,17 @@ class CFieldDescriptor
     //  [in]index:字段索引
     //返回值:
     //   0-成功; <0-不存在;
-    int                  get_field(int index, ST_FIELD_DESC *field_desc);
-    ST_FIELD_DESC       &get_field(int index);//以引用方式返回
-    const ST_FIELD_DESC *get_field_ptr(int index);//以指针方式返回
+    int                  find_field(int index, ST_FIELD_DESC *field_desc);
+    ST_FIELD_DESC       &find_field(int index);//以引用方式返回
+    const ST_FIELD_DESC *find_field_ptr(int index);//以指针方式返回
 
     //功能:获取字段定义
     //参数:
     //  [in]name:字段名
     //返回值:
     //  0-成功; <0-不存在;
-    int                  get_field(char *name, ST_FIELD_DESC *field_desc);
-    const ST_FIELD_DESC *get_field_ptr(char *name);//以指针方式返回
+    int                  find_field(char *name, ST_FIELD_DESC *field_desc);
+    const ST_FIELD_DESC *find_field_ptr(char *name);//以指针方式返回
     
     void *convert_serial2struct(unsigned char *src, size_t src_size, unsigned char *dst, size_t dst_size);
     void *convert_struct2serial(unsigned char *src, size_t src_size, unsigned char *dst, size_t dst_size);

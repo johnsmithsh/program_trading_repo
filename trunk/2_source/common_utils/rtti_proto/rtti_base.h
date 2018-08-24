@@ -29,7 +29,7 @@ class CRttiStBase
       //设置字段值
       int set_field_value(char *name, unsigned char *data_ptr, int size);
 
-      //获取字段值
+      //@brief 获取字段值
       char           get_char(char *name)  {          char  value=0; get_field_value(name, &value, sizeof(value)); return value; }
       unsigned char  get_uchar(char *name) { unsigned char  value=0; get_field_value(name, &value, sizeof(value)); return value; }
       short          get_int2(char *name)  {          short value=0; get_field_value(name, &value, sizeof(value)); return value; }
@@ -45,7 +45,7 @@ class CRttiStBase
          return buff_ptr; 
       }
 
-      //设置字段值
+      //@brief 根据字段名设置字段值
       int set_char(char   *name, char           value) { return set_field_value(name, &value, sizeof(value)); }
       int set_uchar(char  *name, unsigned char  value) { return set_field_value(name, &value, sizeof(value)); }
       int set_int2(char   *name, short          value) { return set_field_value(name, &value, sizeof(value)); }
