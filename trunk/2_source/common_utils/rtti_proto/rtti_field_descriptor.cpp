@@ -21,21 +21,21 @@ CFieldDescriptor::~CFieldDescriptor()
    m_field_list.clear();
 }
 
-int CFieldDescriptor::append_field(RTTI_DATA_TYPE data_type, char *name, char *comment, int st_offset, int offset, int size, int count)
+int CFieldDescriptor::append_field(ST_FIELD_DESC::RTTI_DATA_TYPE data_type, char *name, char *comment, int st_offset, int offset, int size, int count)
 {
   ST_FIELD_DESC field_desc;
   //校验数据类型是否合法
-  if( (RDT_CHAR!=data_type) 
-       && (RDT_CHAR!=data_type)
-       && (RDT_UCHAR!=data_type)
-       && (RDT_INT2!=data_type)
-       && (RDT_UINT2!=data_type)
-       && (RDT_INT4!=data_type)
-       && (RDT_UINT4!=data_type)
-       && (RDT_LONG!=data_type)
-       && (RDT_DOUBLE!=data_type)
-       && (RDT_STR!=data_type)
-       && (RDT_VAR_STR!=data_type)
+  if(     (ST_FIELD_DESC::RDT_CHAR!=data_type) 
+       && (ST_FIELD_DESC::RDT_CHAR!=data_type)
+       && (ST_FIELD_DESC::RDT_UCHAR!=data_type)
+       && (ST_FIELD_DESC::RDT_INT2!=data_type)
+       && (ST_FIELD_DESC::RDT_UINT2!=data_type)
+       && (ST_FIELD_DESC::RDT_INT4!=data_type)
+       && (ST_FIELD_DESC::RDT_UINT4!=data_type)
+       && (ST_FIELD_DESC::RDT_LONG!=data_type)
+       && (ST_FIELD_DESC::RDT_DOUBLE!=data_type)
+       && (ST_FIELD_DESC::RDT_STR!=data_type)
+       && (ST_FIELD_DESC::RDT_VAR_STR!=data_type)
     )
     return -1;
  //校验名字是否合法
@@ -53,14 +53,14 @@ int CFieldDescriptor::append_field(RTTI_DATA_TYPE data_type, char *name, char *c
  if(NULL!=comment) strncpy(field_desc.field_comment, comment, sizeof(field_desc.field_comment)-1);
  field_desc.count=count;
  field_desc.st_offset = st_offset;
- field_desc.offset = offset;
- field_desc.size = size;
+ field_desc.proto_offset = offset;
+ field_desc.field_size = size;
 
  m_field_list.push_back(field_desc);
  return 0; 
 }
 
-int CFieldDescriptor::append_field(RTTI_DATA_TYPE data_type, char *name, char *comment, int st_offset, int size)
+int CFieldDescriptor::append_field(ST_FIELD_DESC::RTTI_DATA_TYPE data_type, char *name, char *comment, int st_offset, int size)
 {
    //根据上一个字段的偏移+大小,计算当前字段的偏移
    //注: 此处的offset用于序列化
@@ -69,7 +69,7 @@ int CFieldDescriptor::append_field(RTTI_DATA_TYPE data_type, char *name, char *c
    if(index>0)
    {
       ST_FIELD_DESC *field_ptr= &m_field_list[index-1];
-      offset = field_ptr->offset + field_ptr->size;
+      offset = field_ptr->st_offset + field_ptr->field_size;
    }
    
    return this->append_field(data_type, name, comment, st_offset, offset, size, 1);
@@ -86,11 +86,11 @@ ST_FIELD_DESC * CFieldDescriptor::add_field(char *name, char *comment, int st_of
       strncpy(field_desc.field_comment, comment, sizeof(field_desc.field_comment)-1);
   field_desc.count      = 1;
   field_desc.st_offset  = st_offset;
-  field_desc.offset     = st_offset;
-  field_desc.size       = size;
+  field_desc.proto_offset     = st_offset;
+  field_desc.field_size       = size;
   m_field_list.push_back(field_desc);
   
-  return m_field_list.end();
+  return &(*(m_field_list.rbegin()));
 }
 
 /**
@@ -101,20 +101,20 @@ ST_FIELD_DESC * CFieldDescriptor::add_field(char *name, char *comment, int st_of
  * 返回值:
  *    0-成功; <0-失败; 
  **/
-int CFieldDescriptor::get_field(int index, ST_FIELD_DESC *field_desc)
+int CFieldDescriptor::find_field(int index, ST_FIELD_DESC *field_desc)
 {
-  ST_FIELD_DESC * ptr = get_field_ptr(index);
+  ST_FIELD_DESC * ptr = find_field_ptr(index);
   if(NULL==ptr) return -1;
   if(NULL!=field_desc) *field_desc = *ptr;
   return 0;
 }
-ST_FIELD_DESC & CFieldDescriptor::get_field(int index)
+ST_FIELD_DESC & CFieldDescriptor::find_field(int index)
 {
-  ST_FIELD_DESC * ptr = get_field_ptr(index);
+  ST_FIELD_DESC * ptr = find_field_ptr(index);
   //if(NULL==ptr) return 0;
   return *ptr;
 }
-ST_FIELD_DESC *CFieldDescriptor::get_field_ptr(int index)
+ST_FIELD_DESC *CFieldDescriptor::find_field_ptr(int index)
 {
   if( (index<0) || index>=m_field_list.size()) return NULL;
   return &m_field_list[index];
@@ -128,15 +128,15 @@ ST_FIELD_DESC *CFieldDescriptor::get_field_ptr(int index)
  * 返回值:
  *    0-成功; <0-失败;
  **/
-int CFieldDescriptor::get_field(char *name, ST_FIELD_DESC *field_desc)
+int CFieldDescriptor::find_field(char *name, ST_FIELD_DESC *field_desc)
 {
-  ST_FIELD_DESC * ptr = get_field_ptr(name);
+  ST_FIELD_DESC * ptr = find_field_ptr(name);
   if(NULL==ptr) return -1;
   if(NULL!=field_desc) *field_desc = *ptr;
   return 0;
 }
 
-ST_FIELD_DESC * CFieldDescriptor::get_field_ptr(char *name)
+ST_FIELD_DESC * CFieldDescriptor::find_field_ptr(char *name)
 {
   int count=m_field_list.size();
   for(int i=0; i< count; i++)
@@ -152,14 +152,14 @@ ST_FIELD_DESC * CFieldDescriptor::get_field_ptr(char *name)
 //迭代器相关
 CFieldDescriptor::iterator CFieldDescriptor::begin()
 {
-   CFieldDescriptor::iterator iter(NULL, this);
+   CFieldDescriptor::iterator iter(this);
    iter.set_cursor(0);
    return iter;
 }
 
 CFieldDescriptor::iterator CFieldDescriptor::end()
 {
-  CFieldDescriptor::iterator iter(NULL, this);
+  CFieldDescriptor::iterator iter(this);
    iter.set_cursor(-1);
    return iter;
 }

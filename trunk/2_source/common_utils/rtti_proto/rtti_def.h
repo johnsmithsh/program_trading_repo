@@ -39,13 +39,13 @@
     static RTTI_NS::rttiStDescriptor stDescriptor
 
     
-#define RTTI_REGISTER_IN(st_name, database) \
-    GET_TABLE_DESC_PREFIX RTTI_NS::dbTableDescriptor* dbGetTableDescriptor GET_TABLE_DESC_PARAM(table) \
-      { return &table::dbDescriptor; }            \
-    static RTTI_NS::dbFieldDescriptor* dbDescribeComponentsOf##table() \
-      { return ((table*)0)->dbDescribeComponents(NULL); }     \
-    RTTI_NS::dbTableDescriptor table::dbDescriptor(#table, database, sizeof(table), \
-                                          &dbDescribeComponentsOf##table)
+//#define RTTI_REGISTER_IN(st_name, database) \
+//    GET_TABLE_DESC_PREFIX RTTI_NS::dbTableDescriptor* dbGetTableDescriptor GET_TABLE_DESC_PARAM(table) \
+//      { return &table::dbDescriptor; }            \
+//    static RTTI_NS::dbFieldDescriptor* dbDescribeComponentsOf##table() \
+//      { return ((table*)0)->dbDescribeComponents(NULL); }     \
+//    RTTI_NS::dbTableDescriptor table::dbDescriptor(#table, database, sizeof(table), \
+//                                          &dbDescribeComponentsOf##table)
 ////////////////////////////////////////////////////////////
 //
 //
@@ -177,52 +177,52 @@ class rttiFieldDescriptor
 //}
 inline rttiFieldDescriptor* setDescribeFieldType(rttiFieldDescriptor* fd, char&)
 {
-    fd->field_data_type = st_field_t::RDT_CHAR;
+    fd->m_field.field_data_type = st_field_t::RDT_CHAR;
     return fd;
 }
 inline rttiFieldDescriptor* setDescribeFieldType(rttiFieldDescriptor* fd, unsigned char&)
 {
-    fd->field_data_type = st_field_t::RDT_UCHAR;
+    fd->m_field.field_data_type = st_field_t::RDT_UCHAR;
     return fd;
 }
 inline rttiFieldDescriptor* setDescribeFieldType(rttiFieldDescriptor* fd, short&)
 {
-    fd->field_data_type = st_field_t::RDT_INT2;
+    fd->m_field.field_data_type = st_field_t::RDT_INT2;
     return fd;
 }
 inline rttiFieldDescriptor* setDescribeFieldType(rttiFieldDescriptor* fd, unsigned short&)
 {
-    fd->field_data_type = st_field_t::RDT_UINT2;
+    fd->m_field.field_data_type = st_field_t::RDT_UINT2;
     return fd;
 }
 inline rttiFieldDescriptor* setDescribeFieldType(rttiFieldDescriptor* fd, int&)
 {
-    fd->field_data_type = st_field_t::RDT_INT4;
+    fd->m_field.field_data_type = st_field_t::RDT_INT4;
     return fd;
 }
 inline rttiFieldDescriptor* setDescribeFieldType(rttiFieldDescriptor* fd, unsigned int&)
 {
-    fd->field_data_type = st_field_t::RDT_UINT4;
+    fd->m_field.field_data_type = st_field_t::RDT_UINT4;
     return fd;
 }
 inline rttiFieldDescriptor* setDescribeFieldType(rttiFieldDescriptor* fd, long&)
 {
-    fd->field_data_type = st_field_t::RDT_LONG;
+    fd->m_field.field_data_type = st_field_t::RDT_LONG;
     return fd;
 }
 inline rttiFieldDescriptor* setDescribeFieldType(rttiFieldDescriptor* fd, unsigned long&)
 {
-    fd->field_data_type = st_field_t::RDT_ULONG;
+    fd->m_field.field_data_type = st_field_t::RDT_ULONG;
     return fd;
 }
 inline rttiFieldDescriptor* setDescribeFieldType(rttiFieldDescriptor* fd, float&)
 {
-    fd->field_data_type = st_field_t::RDT_FLOAT;
+    fd->m_field.field_data_type = st_field_t::RDT_FLOAT;
     return fd;
 }
 inline rttiFieldDescriptor* setDescribeFieldType(rttiFieldDescriptor* fd, double&)
 {
-    fd->field_data_type = st_field_t::RDT_DOUBLE;
+    fd->m_field.field_data_type = st_field_t::RDT_DOUBLE;
     return fd;
 }
 //多维数组
@@ -233,10 +233,10 @@ inline rttiFieldDescriptor* setDescribeFieldType(rttiFieldDescriptor* fd, double
 //    return fd;
 //}
 //#ifdef USE_STD_STRING
-inline rttiFieldDescriptor* setDescribeFieldType(rttiFieldDescriptor* fd, std::string&)
-{
-    return fd->setStringType(st_field_t::RDT_stdStr);
-}
+//inline rttiFieldDescriptor* setDescribeFieldType(rttiFieldDescriptor* fd, std::string&)
+//{
+//    return fd->setStringType(st_field_t::RDT_stdStr);
+//}
 //inline rttiFieldDescriptor* setDescribeFieldType(rttiFieldDescriptor* fd, std::wstring&)
 //{
 //    return fd->setWStringType(st_field_t::tpStdWString);
@@ -244,11 +244,13 @@ inline rttiFieldDescriptor* setDescribeFieldType(rttiFieldDescriptor* fd, std::s
 //#endif
 inline rttiFieldDescriptor* setDescribeFieldType(rttiFieldDescriptor* fd, char const*&)
 {
-    return fd->setStringType(st_field_t::RDT_STR);
+    fd->m_field.field_data_type = st_field_t::RDT_STR;//return fd->setStringType(st_field_t::RDT_STR);
+    return fd;
 }
 inline rttiFieldDescriptor* setDescribeFieldType(rttiFieldDescriptor* fd, char*&)
 {
-    return fd->setStringType(st_field_t::RDT_STR);
+   fd->m_field.field_data_type = st_field_t::RDT_STR;//return fd->setStringType(st_field_t::RDT_STR);
+   return fd;
 }
 
 //inline rttiFieldDescriptor* setDescribeFieldType(rttiFieldDescriptor* fd, wchar_t const*&)
@@ -290,9 +292,9 @@ class CFieldDescriptor
     //  [in] count:  字段个数,用于指定数组
     //返回值:
     //   0-成功;<0-失败
-    int append_field(RTTI_DATA_TYPE data_type, char *name, char *comment,int st_offset, int offset, int size, int count);
+    int append_field(ST_FIELD_DESC::RTTI_DATA_TYPE data_type, char *name, char *comment,int st_offset, int offset, int size, int count);
     //功能: 添加一个字段定义, 偏移offset根据最后一个字段自动计算; 注:默认字节对齐方式; 暂时未考虑其他对齐方式
-    int append_field(RTTI_DATA_TYPE data_type, char *name, char *comment, int st_offset, int size);
+    int append_field(ST_FIELD_DESC::RTTI_DATA_TYPE data_type, char *name, char *comment, int st_offset, int size);
 
     ST_FIELD_DESC * add_field(char *name, char *comment, int st_offset, int size);
     
@@ -301,16 +303,16 @@ class CFieldDescriptor
     //int del_field(char *name);
 
     //增加不同类型的字段定义
-    int add_char(char *name, char *comment, int st_offset)          { return append_field(RDT_CHAR,   name, comment, st_offset, sizeof(char)); }
-    int add_uchar(char *name, char *comment, int st_offset)         { return append_field(RDT_UCHAR,  name, comment, st_offset, sizeof(char)); }
-    int add_int2(char *name, char *comment, int st_offset)          { return append_field(RDT_INT2,   name, comment, st_offset, sizeof(short)); }
-    int add_uint2(char *name, char *comment, int st_offset)         { return append_field(RDT_UINT2,  name, comment, st_offset, sizeof(short)); }
-    int add_int4(char *name, char *comment, int st_offset)          { return append_field(RDT_INT4,   name, comment, st_offset, sizeof(int)); }
-    int add_uint4(char *name, char *comment, int st_offset)         { return append_field(RDT_UINT4,  name, comment, st_offset, sizeof(int)); }
-    int add_long(char *name, char *comment, int st_offset)          { return append_field(RDT_LONG,   name, comment, st_offset, sizeof(long)); }
-    int add_double(char *name, char *comment, int st_offset)        { return append_field(RDT_DOUBLE, name, comment, st_offset, sizeof(double)); }
-    int add_str(char *name, char *comment, int st_offset, int size) { return append_field(RDT_STR,    name, comment, st_offset, size); }
-    int add_varstr(char *name, char *comment, int st_offset)        { return append_field(RDT_VAR_STR,name, comment, st_offset, 1024); }
+    int add_char(char *name, char *comment, int st_offset)          { return append_field(ST_FIELD_DESC::RDT_CHAR,   name, comment, st_offset, sizeof(char)); }
+    int add_uchar(char *name, char *comment, int st_offset)         { return append_field(ST_FIELD_DESC::RDT_UCHAR,  name, comment, st_offset, sizeof(char)); }
+    int add_int2(char *name, char *comment, int st_offset)          { return append_field(ST_FIELD_DESC::RDT_INT2,   name, comment, st_offset, sizeof(short)); }
+    int add_uint2(char *name, char *comment, int st_offset)         { return append_field(ST_FIELD_DESC::RDT_UINT2,  name, comment, st_offset, sizeof(short)); }
+    int add_int4(char *name, char *comment, int st_offset)          { return append_field(ST_FIELD_DESC::RDT_INT4,   name, comment, st_offset, sizeof(int)); }
+    int add_uint4(char *name, char *comment, int st_offset)         { return append_field(ST_FIELD_DESC::RDT_UINT4,  name, comment, st_offset, sizeof(int)); }
+    int add_long(char *name, char *comment, int st_offset)          { return append_field(ST_FIELD_DESC::RDT_LONG,   name, comment, st_offset, sizeof(long)); }
+    int add_double(char *name, char *comment, int st_offset)        { return append_field(ST_FIELD_DESC::RDT_DOUBLE, name, comment, st_offset, sizeof(double)); }
+    int add_str(char *name, char *comment, int st_offset, int size) { return append_field(ST_FIELD_DESC::RDT_STR,    name, comment, st_offset, size); }
+    int add_varstr(char *name, char *comment, int st_offset)        { return append_field(ST_FIELD_DESC::RDT_VAR_STR,name, comment, st_offset, 1024); }
     
     
   public:
@@ -323,7 +325,7 @@ class CFieldDescriptor
        int size=0;
        std::vector<ST_FIELD_DESC>::reverse_iterator iter;
        if((iter=m_field_list.rbegin()) != m_field_list.rend())
-          size = iter->offset + iter->size;
+          size = iter->proto_offset + iter->field_size;
        return size; 
     }
     //获取struct结构体大小
@@ -332,7 +334,7 @@ class CFieldDescriptor
        int size=0;
        std::vector<ST_FIELD_DESC>::reverse_iterator iter;
        if((iter=m_field_list.rbegin()) != m_field_list.rend())
-          size = iter->st_offset + iter->size;
+          size = iter->st_offset + iter->field_size;
        return size;
     }
 
@@ -343,7 +345,7 @@ class CFieldDescriptor
     //   0-成功; <0-不存在;
     int                  find_field(int index, ST_FIELD_DESC *field_desc);
     ST_FIELD_DESC       &find_field(int index);//以引用方式返回
-    const ST_FIELD_DESC *find_field_ptr(int index);//以指针方式返回
+    ST_FIELD_DESC *find_field_ptr(int index);//以指针方式返回
 
     //功能:获取字段定义
     //参数:
@@ -351,7 +353,7 @@ class CFieldDescriptor
     //返回值:
     //  0-成功; <0-不存在;
     int                  find_field(char *name, ST_FIELD_DESC *field_desc);
-    const ST_FIELD_DESC *find_field_ptr(char *name);//以指针方式返回
+    ST_FIELD_DESC *find_field_ptr(char *name);//以指针方式返回
     
     void *convert_serial2struct(unsigned char *src, size_t src_size, unsigned char *dst, size_t dst_size);
     void *convert_struct2serial(unsigned char *src, size_t src_size, unsigned char *dst, size_t dst_size);
@@ -417,18 +419,20 @@ inline ST_FIELD_DESC* setDescribeFieldType(ST_FIELD_DESC* fd, double&)
     return fd;
 }
 
-inline ST_FIELD_DESC* setDescribeFieldType(ST_FIELD_DESC* fd, std::string&)
-{
-    return fd->field_data_type = st_field_t::RDT_stdStr;
-}
+//inline ST_FIELD_DESC* setDescribeFieldType(ST_FIELD_DESC* fd, std::string&)
+//{
+//    return fd->field_data_type = st_field_t::RDT_stdStr;
+//}
 
 inline ST_FIELD_DESC* setDescribeFieldType(ST_FIELD_DESC* fd, char const*&)
 {
-    return fd->field_data_type = st_field_t::RDT_STR;
+    fd->field_data_type = st_field_t::RDT_STR;
+    return fd;
 }
 inline ST_FIELD_DESC* setDescribeFieldType(ST_FIELD_DESC* fd, char*&)
 {
-    return fd->field_data_type = st_field_t::RDT_STR;
+    fd->field_data_type = st_field_t::RDT_STR;
+    return fd;
 }
 
 //迭代器元素指针
@@ -571,7 +575,7 @@ class CFieldDescIterator: public std::iterator<std::random_access_iterator_tag, 
   //迭代器五个属性已经在父类中定义,不需要重新定义;
 
   public:
-    CFieldDescIterator(ST_FIELD_DESC *elem_ptr=NULL,CFieldDescriptor *container_ptr=NULL) : m_container_ptr(container_ptr)
+    CFieldDescIterator(CFieldDescriptor *container_ptr=NULL) : m_container_ptr(container_ptr)
     {
       //m_elem_ptr=NULL;//不用设置元素指针了
       m_container_ptr=container_ptr;//容器指针,暂时这么实现吧！
@@ -589,7 +593,7 @@ class CFieldDescIterator: public std::iterator<std::random_access_iterator_tag, 
        if( (m_cursor>=0) && (NULL!=m_container_ptr))
        {
           //return m_container_ptr->get_field(m_cursor);
-          ptr=m_container_ptr->get_field_ptr(m_cursor);
+          ptr=m_container_ptr->find_field_ptr(m_cursor);
        }
        return *ptr;//NULL will result in core dump
     };
@@ -597,7 +601,7 @@ class CFieldDescIterator: public std::iterator<std::random_access_iterator_tag, 
     {
        if( (m_cursor>=0) && (NULL!=m_container_ptr))
        {
-          return m_container_ptr->get_field_ptr(m_cursor);
+          return m_container_ptr->find_field_ptr(m_cursor);
        }
        return NULL;
     }
