@@ -40,7 +40,7 @@ int CFieldDescriptor::append_field(ST_FIELD_DESC::RTTI_DATA_TYPE data_type, char
     return -1;
  //校验名字是否合法
  if((NULL==name) || ('\0'==*name)) return -2;
- for(int i =0; i<m_field_list.size(); i++)
+ for(unsigned int i =0; i<m_field_list.size(); ++i)
  {
     if(0==strcmp(name, m_field_list[i].field_name))//字段名已经存在
         return -3;
@@ -116,7 +116,7 @@ ST_FIELD_DESC & CFieldDescriptor::find_field(int index)
 }
 ST_FIELD_DESC *CFieldDescriptor::find_field_ptr(int index)
 {
-  if( (index<0) || index>=m_field_list.size()) return NULL;
+  if( (index<0) || index>=(int)m_field_list.size()) return NULL;
   return &m_field_list[index];
 }
 
@@ -148,6 +148,54 @@ ST_FIELD_DESC * CFieldDescriptor::find_field_ptr(char *name)
 
 }
 
+//@brief 链表操作: struct数据转换为serial数据
+void *CFieldDescriptor::convert_serial2struct(unsigned char *src, size_t src_size, unsigned char *dst, size_t dst_size)
+{
+    std::vector<ST_FIELD_DESC>::iterator iter;
+    for(iter = m_field_list.begin(); iter!=m_field_list.end(); ++iter)
+    {
+        ST_FIELD_DESC &field_ref = *iter;
+        //防止数据结构发生变化,加载旧结构数据出现问题,故必须判断大小;
+        if((field_ref.st_offset+field_ref.field_size<=(int)src_size)&&(field_ref.st_offset+field_ref.field_size<=(int)dst_size))
+            memcpy(dst+field_ref.st_offset, src+field_ref.proto_offset, field_ref.field_size);
+    }
+    
+    return dst;
+}
+
+//@brief 链表操作: struct数据转换为serial数据
+void *CFieldDescriptor::convert_struct2serial(unsigned char *src, size_t src_size, unsigned char *dst, size_t dst_size)
+{
+    std::vector<ST_FIELD_DESC>::iterator iter;
+    for(iter = m_field_list.begin(); iter!=m_field_list.end(); ++iter)
+    {
+        ST_FIELD_DESC &field_ref = *iter;
+        //防止数据结构发生变化,加载旧结构数据出现问题,故必须判断大小;
+        if((field_ref.st_offset+field_ref.field_size<=(int)src_size)&&(field_ref.st_offset+field_ref.field_size<=(int)dst_size))
+            memcpy(dst+field_ref.proto_offset, src+field_ref.st_offset, field_ref.field_size);
+    }
+    
+    return dst;
+}
+    
+//@brief 链表操作: 清除struct数据
+void CFieldDescriptor::clear_struct(unsigned char *dst, size_t dst_size)
+{
+    if((dst==NULL))
+        return ;
+    if((dst_size<=0))
+        return ;
+    
+  int count=m_field_list.size();
+  for(int i=0; i< count; i++)
+  {
+      ST_FIELD_DESC &field_ref = m_field_list[i];
+     //防止数据结构发生变化,加载旧结构数据出现问题,故必须判断大小;
+     if(field_ref.st_offset+field_ref.field_size<=(int)dst_size)
+        memset(dst+field_ref.st_offset, 0, field_ref.field_size);
+  }
+}
+/////////////////////////////////////////////////////////////////////////////////////////////
 
 //迭代器相关
 CFieldDescriptor::iterator CFieldDescriptor::begin()

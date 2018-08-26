@@ -97,3 +97,25 @@ void *rttiFieldDescriptor::convert_struct2serial(unsigned char *src, size_t src_
     
     return dst;
 }
+
+//@brief 链表操作: 清除struct数据
+void rttiFieldDescriptor::clear_struct(unsigned char *dst, size_t dst_size)
+{
+    if((dst==NULL))
+        return ;
+    if((dst_size<=0))
+        return ;
+    
+    rttiFieldDescriptor *rfd=this;
+    st_field_t *pField=NULL;
+    do
+    {
+        pField = rfd->get_field_info();
+        //防止数据结构发生变化,加载旧结构数据出现问题,故必须判断大小;
+        if(pField->st_offset+pField->field_size<=dst_size))
+            memset(dst+pField->st_offset, 0, pField->field_size);
+    }
+    while((rfd=rfd->next) != this);
+    
+    return;
+}

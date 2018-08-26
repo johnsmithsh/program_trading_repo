@@ -156,6 +156,8 @@ class rttiFieldDescriptor
     void *convert_serial2struct(unsigned char *src, size_t src_size, unsigned char *dst, size_t dst_size);
     //@brief 链表操作: struct数据转换为serial数据
     void *convert_struct2serial(unsigned char *src, size_t src_size, unsigned char *dst, size_t dst_size);
+    //@brief 链表操作: 清除struct数据
+    void clear_struct(unsigned char *dst, size_t dst_size);
     
   public:
     st_field_t m_field;
@@ -352,11 +354,12 @@ class CFieldDescriptor
     //  [in]name:字段名
     //返回值:
     //  0-成功; <0-不存在;
-    int                  find_field(char *name, ST_FIELD_DESC *field_desc);
+    int            find_field(char *name, ST_FIELD_DESC *field_desc);
     ST_FIELD_DESC *find_field_ptr(char *name);//以指针方式返回
     
     void *convert_serial2struct(unsigned char *src, size_t src_size, unsigned char *dst, size_t dst_size);
     void *convert_struct2serial(unsigned char *src, size_t src_size, unsigned char *dst, size_t dst_size);
+    void clear_struct(unsigned char *dst, size_t dst_size);
     
   private:
     std::vector<ST_FIELD_DESC> m_field_list;
