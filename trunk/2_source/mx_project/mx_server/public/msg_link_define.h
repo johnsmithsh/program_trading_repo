@@ -68,15 +68,37 @@
 //消息头
 typedef struct __st_msg_head
 {
-    unsigned int          data_len;//!< 数据包长度不包含数据头
+    unsigned int   data_len;//!< 数据包长度不包含数据头
     unsigned short msgid;//!< 业务类型
 	
     unsigned char ccflag;//!< 控制标记, 保留
     unsigned char headflag;//!< 报文头标记, 保留
     unsigned int  req_id; //!< 保留
     unsigned int  rsp_id; //!< 保留
-	unsigned int  ack_id; //!< 保留
+	 unsigned int   ack_id; //!< 保留
 }ST_MSG_HEAD;
+
+typedef struct //!< 报文通用部分,每个报文都包含; 当然建立连接请求中不能包含所有信息
+{
+    //!< 业务进程信息说明,用于业务进程校验是否属于本服务进程
+    char          group_no[16];//!< 业务组号
+    unsigned int  bu_no;       //!< 业务服务id; 建立连接时,控制中心分配给业务的id,每个服务进程都不一样
+    unsigned int  bcc_id;      //!< 控制中心id
+
+    unsigned int  request_id;//!< 控制中心生成的请求id,需要在应答域回写该字段
+    unsigned int  msg_num;   //!< 消息个数
+    char session_mode;  //!< 请求任务类型
+    char mask;      //!< first_flag; next_flag; req_flag; rsp_flag; push_flag;
+}ST_MSG_COMMON;
+
+//一个msg消息包
+typedef struct
+{
+	ST_MSG_HEAD   head;//报文头
+	ST_MSG_COMMON commoninfo;//msg消息说明信息
+   char data_buff[8192];//msg消息数据
+}ST_MSGLINK_BUFF;
+
 
 //应答消息
 typedef struct __st_msg_rsp
@@ -88,11 +110,11 @@ typedef struct __st_msg_rsp
 //定义初始化连接(创建连接)报文 MSGTYPE_CONN
 typedef struct //!< 连接请求: 业务进程 => 控制中心
 {
-    char group_no[16];//!< 业务组号
-    char group_desc[64];//!< 业务组描述
+	char group_no[16];//!< 业务组号
+   char group_desc[64];//!< 业务组描述
  
 	char prog_name[32];//!< 程序名
-    long proc_id;//!< 进程号
+   unsigned long proc_id;//!< 进程号
 	char version[4];//!< 版本信息
 	
 	char mode;//!< 模式
@@ -100,8 +122,8 @@ typedef struct //!< 连接请求: 业务进程 => 控制中心
 
 typedef struct //!< 连接应答: 控制中心 => 业务进程
 {
-    int bu_no; //控制中心分配给业务的id,每个服务进程都不一样
-    int bcc_id;//控制中心id
+    int  bu_no; //控制中心分配给业务的id,每个服务进程都不一样
+    int  bcc_id;//控制中心id
     char if_succ;
     char szmsg[255];
 }MSG_ANS_CONN;
@@ -125,7 +147,7 @@ typedef struct //!< 断开连接应答: 控制中心 => 业务进程
     char if_succ;
     char szmsg[255];
 }MSG_ANS_DISCONN;
-//-------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------
 //通信类型
 #define MSGLINK_COMMTYPE_REQRSP     '1'  //请求-应答模型
 #define MSGLINK_COMMTYPE_REQRSPPUSH '2'  //请求-应答-推送模型
@@ -296,32 +318,21 @@ typedef struct //!< 注册业务应答: 控制中心 => 业务进程
 //    char mask;//!< first_flag; next_flag; req_flag; rsp_flag; push_flag;
 //}MSG_ACK_FORWARD;
 //-----------------------------------------------------------------------------------------------
-typedef struct //!< 报文通用部分,每个报文都包含; 当然建立连接请求中不能包含所有信息
-{
-    //!< 业务进程信息说明,用于业务进程校验是否属于本服务进程
-    char group_no[16];//!< 业务组号
-    int  bu_no;       //!< 业务服务id; 建立连接时,控制中心分配给业务的id,每个服务进程都不一样
-    int  bcc_id;      //!< 控制中心id
-    
-    int  request_id;//!< 控制中心生成的请求id,需要在应答域回写该字段
-    int  msg_num;   //!< 消息个数
-    char req_mode;  //!< 请求任务类型
-    char mask;      //!< first_flag; next_flag; req_flag; rsp_flag; push_flag;
-}ST_MSG_COMMON;
+
 
 typedef struct //!< ACK消息
 {
-    char if_succ;
+   char if_succ;
 	char szmsg[255];
 }MSG_RSP;
 
 typedef struct //!< ACK消息
 {
-    char if_succ;
+	char if_succ;
 	char szmsg[255];
 }MSG_ACK;
 
-//-----------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------------------------------------------------
 //定义连接信息,描述控制中心与业务进程之间的连接
 typedef struct
 {
@@ -339,7 +350,7 @@ typedef struct
 //连接句柄
 typedef struct
 {
-    ST_LINK_INFO link_info;
+   ST_LINK_INFO link_info;
 	int so;
 	int start_time;
 	
@@ -347,16 +358,9 @@ typedef struct
 	unsigned int recv_serial;//!< 接收序号,即对方发送序号
 	
 	char version[4];//协议版本号
-	
 }ST_SVR_LINK_HANDLE;
 
-//一个msg消息包
-typedef struct
-{
-    ST_MSG_HEAD   head;//报文头
-	ST_MSG_COMMON commoninfo;//msg消息说明信息
-    char data_buff[8192];//msg消息数据
-}ST_MSGLINK_BUFF;
+
 
 typedef struct __st_bufunc_item
 {
