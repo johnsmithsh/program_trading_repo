@@ -162,4 +162,12 @@ int msglink_pkg_ctrlinfo(unsigned char *buff, size_t buffsize, bool first_flag, 
 //@brief 设置报文: 增加业务数据
 int msglink_pkg_data_append(unsigned char *buff, size_t buffsize, unsigned char *data_ptr, size_t data_len, char *errmsg);
 
+
+//设置common信息
+int msglink_common_set_conninfo(ST_MSG_COMMON *msg_common_ptr, int bcc_id, int bu_no, char *group_no);
+int msglink_common_set_ctrlinfo(ST_MSG_COMMON *msg_common_ptr, bool first_flag=true, bool next_flag=false, bool ack_flag=false, bool push_flag=false);
+int msglink_common_set_requestinfo(ST_MSG_COMMON *msg_common_ptr, unsigned int request_id, unsigned int num);
+
+//@brief 设置报文: 增加业务数据
+int msglink_pkg_data_append(unsigned char *buff, size_t buffsize, unsigned char *data_ptr, size_t data_len, char *errmsg);
 #endif
