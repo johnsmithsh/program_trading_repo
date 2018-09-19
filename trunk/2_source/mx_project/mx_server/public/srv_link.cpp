@@ -1,4 +1,5 @@
 #include "svr_link.h"
+#include "msg_link_define.h"
 
 int msg_send(const char *buff, size_t data_len)
 {
@@ -23,19 +24,29 @@ int svrlink_setinfo(SVRLINK_HANDLE svrlinkhandle, const char *group_no, const ch
 int svrlink_connect(SVRLINK_HANDLE svrlinkhandle,  char *ip, int port, char *errmsg)
 {
     ST_MSGLINK_BUFF msg_buff;
-	memset(msg_buff, 0, sizeof(msg_buff.head+msg_Buff.commoninfo));
+    memset(msg_buff, 0, sizeof(msg_buff.head+msg_Buff.commoninfo));
 	
 	int so;
 	//todo 连接tcp服务器...
 	
 	//构造连接请求报文
-	ST_SRV_LINK_HANDLE *svr_link=(ST_SRV_LINK_HANDLE*)svrlinkhandle;
-	int rc=lmasm_req_conn(svr_link->link_info.group_no, svr_link->link_info.group_desc, svr_link->version, 0, &msg_buff, sizeof(msg_buff));
-	if(rc<0)//构造报文错误
-	{
-	    return -1;
-	}
-	
+	ST_SVR_LINK_HANDLE *svr_link=(ST_SVR_LINK_HANDLE*)svrlinkhandle;
+	//int rc=lmasm_req_conn(svr_link->link_info.group_no, svr_link->link_info.group_desc, svr_link->version, 0, &msg_buff, sizeof(msg_buff));
+	//if(rc<0)//构造报文错误
+	//{
+	//    return -1;
+	//}
+
+	ST_MSG_HEAD *head_ptr= &msg_buff.head;
+	//设置报文头
+	head_ptr->msgid=MSGTYPE_CONN;
+	head_ptr->data_len = sizeof(MSG_REQ_CONN);
+
+	MSG_REQ_CONN *body_ptr=(MSG_REQ_CONN*)(buff+sizeof(ST_MSG_HEAD));
+	strncpy(body_ptr->group_no,   svr_link->link_info.group_no,      sizeof(body_ptr->group_no)-1);//!< 设置业务组号
+	strncpy(body_ptr->group_desc, svr_link->link_info.group_desc,    sizeof(body_ptr->group_desc)-1);//!< 设置业务组描述信息
+	//strncpy(body_ptr->version,    svr_link->link_info.group_version, sizeof(body_ptr->version));//!< 设置版本信息
+
 	//发送连接请求
 	rc=msg_send(&msg_buff, msg_buff.head.data_len+sizeof(msg_buff.head));
 	if(rc<0)//!< 发送数据错误
@@ -74,6 +85,11 @@ int svrlink_connect(SVRLINK_HANDLE svrlinkhandle,  char *ip, int port, char *err
 int svrlink_ans_connect(SVRLINK_HANDLE svrlinkhandle,  char if_succ, const char *szmsg, char *errmsg)
 {
     return -1;
+}
+
+int svrlink_ack(SVRLINK_HANDLE svrlinkhandle, ST_MSG_HEAD *msg_head_ptr, char if_succ, char *szMsg)
+{
+	return -1;
 }
 
 int svrlink_register_function(SVRLINK_HANDLE svrlinkhandle, char *register_info, size_t len, char *errmsg)

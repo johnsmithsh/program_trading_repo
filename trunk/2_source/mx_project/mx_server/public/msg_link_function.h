@@ -1,6 +1,8 @@
 #ifndef _MXX_MSG_LINK_FUNCTION_H_
 #define _MXX_MSG_LINK_FUNCTION_H_
 
+#include "msg_link_define.h"
+
 #define MSG_LNK_ERR_INVALID_BUFF -1 //!< 无效缓存
 
 // lmasm: link msg assemble
@@ -161,8 +163,9 @@ int msglink_pkg_conninfo(unsigned char *buff, size_t buffsize, int bcc_id, int b
 int msglink_pkg_ctrlinfo(unsigned char *buff, size_t buffsize, bool first_flag, bool next_flag, bool ack_flag, bool push_flag, char *errmsg);
 //@brief 设置报文: 增加业务数据
 int msglink_pkg_data_append(unsigned char *buff, size_t buffsize, unsigned char *data_ptr, size_t data_len, char *errmsg);
-
-
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//@brief 设置报文: 初始化报文头
+int msglink_head_init(ST_MSG_HEAD *msg_head_ptr);
 //设置common信息
 int msglink_common_set_conninfo(ST_MSG_COMMON *msg_common_ptr, int bcc_id, int bu_no, char *group_no);
 int msglink_common_set_ctrlinfo(ST_MSG_COMMON *msg_common_ptr, bool first_flag=true, bool next_flag=false, bool ack_flag=false, bool push_flag=false);

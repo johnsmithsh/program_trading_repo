@@ -68,19 +68,20 @@
 //消息头
 typedef struct __st_msg_head
 {
-    unsigned int   data_len;//!< 数据包长度不包含数据头
+    unsigned int   data_len;//!< 数据包长度(不包含数据头)
     unsigned short msgid;//!< 业务类型
 	
     unsigned char ccflag;//!< 控制标记, 保留
     unsigned char headflag;//!< 报文头标记, 保留
     unsigned int  req_id; //!< 保留
     unsigned int  rsp_id; //!< 保留
-	 unsigned int   ack_id; //!< 保留
+	 unsigned int  ack_id; //!< 保留
+	 unsigned int  head_crc;//报文头crc校验
 }ST_MSG_HEAD;
 
 typedef struct //!< 报文通用部分,每个报文都包含; 当然建立连接请求中不能包含所有信息
 {
-    //!< 业务进程信息说明,用于业务进程校验是否属于本服务进程
+     //!< 业务进程信息说明,用于业务进程校验是否属于本服务进程
     char          group_no[16];//!< 业务组号
     unsigned int  bu_no;       //!< 业务服务id; 建立连接时,控制中心分配给业务的id,每个服务进程都不一样
     unsigned int  bcc_id;      //!< 控制中心id
@@ -134,7 +135,7 @@ typedef struct //!< 断开连接请求: 业务进程 => 控制中心
 {
     char group_no[16];//!< 业务组号
     char group_desc[64];//!< 业务组描述
-	char srv_name[64];//!< 服务名,一般设置为程序名即可
+    char srv_name[64];//!< 服务名,一般设置为程序名即可
     int  bu_no;//建立连接时,控制中心分配给业务的id,每个服务进程都不一样
     int  bcc_id;//控制中心id
 }MSG_REQ_DISCONN;
@@ -172,7 +173,8 @@ typedef struct //!< 注册业务应答: 控制中心 => 业务进程
 //定义控制位
 #define MSK_FIRST_BIT 0 //第一个报文
 #define MSK_NEXT_BIT  1 //是否存在下一个报文; 用于控制传送数据过长的情况
-#define MSK_PUSH_BIT  2 //推送消息
+#define MSK_ACK_BIT   2 //ACK标记
+#define MSK_PUSH_BIT  3 //推送消息
 
 ////分配任务报文
 //typedef struct //!< 分配任务请求: 控制中心 => 业务进程

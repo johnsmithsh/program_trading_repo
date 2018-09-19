@@ -2,7 +2,7 @@
 #include <string.h>
 #include <stdio.h>
 
-#include "msg_link_define.h"
+//#include "msg_link_define.h"
 #include "msg_link_function.h"
 
 
@@ -937,6 +937,47 @@ int msglink_pkg_conninfo(unsigned char *buff, size_t buffsize, int bcc_id, int b
 int msglink_pkg_ctrlinfo(unsigned char *buff, size_t buffsize, bool first_flag, bool next_flag, bool ack_flag, bool push_flag, char *errmsg)
 {
     return 0;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//@brief 设置报文: 初始化报文头
+int msglink_head_init(ST_MSG_HEAD *msg_head_ptr)
+{
+	memset(msg_head_ptr, 0, sizeof(msg_head_ptr));
+	return 0;
+}
+
+//@brief 设置链接信息
+int msglink_common_set_conninfo(ST_MSG_COMMON *msg_common_ptr, int bcc_id, int bu_no, char *group_no)
+{
+	msg_common_ptr->bcc_id = bcc_id;
+	msg_common_ptr->bu_no  = bu_no;
+	strncpy(msg_common_ptr->group_no, group_no, sizeof(msg_common_ptr->group_no));
+	return 0;
+}
+
+//@biref 设置控制信息
+int msglink_common_set_ctrlinfo(ST_MSG_COMMON *msg_common_ptr, bool first_flag/*=true*/, bool next_flag/*=false*/, bool ack_flag/*=false*/, bool push_flag/*=false*/)
+{
+	unsigned int mask=0x00;
+	if(first_flag)
+		mask |= (1<<MSK_FIRST_BIT);
+	if(next_flag)
+		mask |= (1<<MSK_NEXT_BIT);
+	if(ack_flag)
+		mask |= (1<<MSK_ACK_BIT);
+	if(push_flag)
+		mask |= (1<<MSK_PUSH_BIT);
+	msg_common_ptr->mask = mask;
+	return 0;
+}
+
+//@brief 设置请求序号 和报文个数
+int msglink_common_set_requestinfo(ST_MSG_COMMON *msg_common_ptr, unsigned int request_id, unsigned int num)
+{
+	msg_common_ptr->request_id = request_id;
+	msg_common_ptr->msg_num    = num;
+	return 0;
 }
 
 //@brief 设置报文: 增加数据
