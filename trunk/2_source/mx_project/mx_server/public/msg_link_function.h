@@ -166,6 +166,9 @@ int msglink_pkg_data_append(unsigned char *buff, size_t buffsize, unsigned char 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //@brief 设置报文: 初始化报文头
 int msglink_head_init(ST_MSG_HEAD *msg_head_ptr);
+int msglink_head_set_msgtypeinfo(ST_MSG_HEAD *msg_head_ptr, unsigned int msgtype, unsigned int mask);
+int msglink_head_set_serialno(ST_MSG_HEAD *msg_head_ptr, unsigned int serial_no);
+int msglink_head_set_crc(ST_MSG_HEAD *msg_head_ptr, unsigned int crc);
 //设置common信息
 int msglink_common_set_conninfo(ST_MSG_COMMON *msg_common_ptr, int bcc_id, int bu_no, char *group_no);
 int msglink_common_set_ctrlinfo(ST_MSG_COMMON *msg_common_ptr, bool first_flag=true, bool next_flag=false, bool ack_flag=false, bool push_flag=false);

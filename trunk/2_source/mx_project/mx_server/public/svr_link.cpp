@@ -345,9 +345,9 @@ int svrlink_ans_connect(SVRLINK_HANDLE svrlinkhandle,  char if_succ, const char 
     int rc;
     
     ST_MSGLINK_BUFF msg_buff;
-    memset(&msg_buff, 0, sizeof(msg_buff.head)+sizeof(msg_buff.commoninfo));
+    memset(&msg_buff, 0, sizeof(msg_buff));
     
-    //构造报文
+    //构造报文头
     ST_SVR_LINK_HANDLE *svr_link=(ST_SVR_LINK_HANDLE*)svrlinkhandle;
     rc=lmasm_ans_conn(svr_link->link_info.bu_no, svr_link->link_info.bcc_id, if_succ, szmsg, (char *)&msg_buff, sizeof(msg_buff));
     if(rc<0)//构造报文错误

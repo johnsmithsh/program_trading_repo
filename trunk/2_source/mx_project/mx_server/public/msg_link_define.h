@@ -65,18 +65,23 @@
 #define C_YES '1' 
 #define C_NO  '0'
 
+#define MASKHEAD_REQ       (1<<0) //请求应答标记;0-请求; 1-应答
+#define MASKHEAD_RSP       (1<<1) //请求应答标记;0-请求; 1-应答
+#define MASKHEAD_ACK       (1<<2)  //ack报文
+#define MASKHEAD_PUSH      (1<<3)  //推送报文
+
 //消息头
 typedef struct __st_msg_head
 {
     unsigned int   data_len;//!< 数据包长度(不包含数据头)
     unsigned short msgid;//!< 业务类型
-	
-    unsigned char ccflag;//!< 控制标记, 保留
-    unsigned char headflag;//!< 报文头标记, 保留
-    unsigned int  req_id; //!< 保留
-    unsigned int  rsp_id; //!< 保留
-	 unsigned int  ack_id; //!< 保留
-	 unsigned int  head_crc;//报文头crc校验
+	 unsigned int   mask;//!<掩码,见MASKHEAD_XXX定义
+    unsigned char  ccflag;//!< 控制标记, 保留
+    unsigned char  headflag;//!< 报文头标记, 保留
+    unsigned int   req_id; //!< 保留
+    unsigned int   rsp_id; //!< 保留
+	 unsigned int   ack_id; //!< 保留
+	 unsigned int   head_crc;//报文头crc校验
 }ST_MSG_HEAD;
 
 typedef struct //!< 报文通用部分,每个报文都包含; 当然建立连接请求中不能包含所有信息
@@ -157,11 +162,12 @@ typedef struct //!< 断开连接应答: 控制中心 => 业务进程
 //注册功能报文
 typedef struct //!< 注册业务请求: 控制中心 <= 业务进程
 {
-    char bu_func_id[16];//!< 业务进程支持的业务
-    char bu_func_desc[63];//!< 业务功能说明
+    char bu_func_id[16];  //!< 业务进程支持的业务id
+    char bu_func_desc[64];//!< 业务功能说明
+    char bu_name[32];     //!< 业务名
+
+    int  priority;        //!< 优先级;
     char bu_func_type;    //!< 1-请求-应答; 1-请求,应答,推送; 2-推送; 3-转发;
-	char bu_name[32]; //!< 业务名
-	int priority;//!< 优先级;
 }MSG_REQ_REGFUNC;
 
 typedef struct //!< 注册业务应答: 控制中心 => 业务进程 
@@ -339,14 +345,14 @@ typedef struct //!< ACK消息
 typedef struct
 {
     //业务组信息
-    char group_no[16];//!< 业务进程自己定义,不能重复
-	char group_desc[64];
-    int  bu_no; //!< 控制中心为业务进程分配
+   char group_no[16];//!< 业务进程自己定义,不能重复
+	har group_desc[64];
+   int  bu_no; //!< 控制中心为业务进程分配
     
-    int  bcc_id;
+   int  bcc_id;
     
-    int  link_mode;//!< 连接模式 bu对bu, bcc对bcc, bcc对bu
-    int  link_role; //!< 连接角色 业务服务角色, 控制中心角色;
+   int  link_mode;//!< 连接模式 bu对bu, bcc对bcc, bcc对bu
+   int  link_role; //!< 连接角色 业务服务角色, 控制中心角色;
 }ST_LINK_INFO;
 
 //连接句柄

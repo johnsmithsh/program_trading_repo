@@ -913,7 +913,13 @@ int msglink_pkg_head_init(unsigned char *buff, size_t buffsize, unsigned short m
 
     return 0;
 }
+int msglink_head_set_msgtypeinfo(ST_MSG_HEAD *msg_head_ptr, unsigned int msgtype, unsigned int mask)
+{
+	msg_head_ptr->msgid = msgtype;
+	msg_head_ptr->mask  = mask;
 
+	return 0;
+}
 //@brief 设置报文: 连接信息
 int msglink_pkg_conninfo(unsigned char *buff, size_t buffsize, int bcc_id, int bu_no, char *group_no, char *errmsg)
 {
@@ -994,13 +1000,13 @@ int msglink_pkg_data_append(unsigned char *buff, size_t buffsize, unsigned char 
 
     ST_MSG_HEAD *head_ptr=(ST_MSG_HEAD*)buff;
 
-    if(buffsize<sizeof(ST_MSG_HEAD)+sizeof(ST_MSG_COMMON)+head_ptr->data_len+data_len)//缓存长度不足
+    if(buffsize<sizeof(ST_MSG_HEAD)+head_ptr->data_len+data_len)//缓存长度不足
 	{
 	    if(NULL!=errmsg) sprintf(errmsg, "msg消息数据区缓存不足");
         return -2;
 	}
         
-    unsigned char *ptr=buff+sizeof(ST_MSG_HEAD)+sizeof(ST_MSG_COMMON)+head_ptr->data_len;
+    unsigned char *ptr=buff+sizeof(ST_MSG_HEAD)+head_ptr->data_len;
     memcpy(ptr, data_ptr, data_len);
     head_ptr->data_len += data_len;
 
