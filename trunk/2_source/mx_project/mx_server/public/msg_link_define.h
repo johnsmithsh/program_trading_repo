@@ -32,6 +32,7 @@
 #define MSGTYPE_ACK_REQUEST     0x51 //!< 请求确认包 控制中心<=业务进程
 #define MSGTYPE_REQ_RESPONSE    0x52 //!< 请求应答包 控制中心<=业务进程,业务进程处理完成后主动返回处理结果;
 #define MSGTYPE_REQ_TRANSFER    0x53 //!< 传送数据请求
+#define MSGTYPE_GET_NEXT        0x54 //!< 下一个数据
 
 #define MSGTYPE_GET_TASK         0x56 //!< 请求分配任务 控制中心<=业务进程, 业务进程空闲,主动向控制中心获取任务;
 #define MSGTYPE_ASSIGN_TASK      0x57 //!< 分配任务     控制中心=>业务进程
@@ -346,7 +347,7 @@ typedef struct
 {
     //业务组信息
    char group_no[16];//!< 业务进程自己定义,不能重复
-	har group_desc[64];
+	char group_desc[64];
    int  bu_no; //!< 控制中心为业务进程分配
     
    int  bcc_id;
@@ -360,7 +361,7 @@ typedef struct
 {
    ST_LINK_INFO link_info;
 	int so;
-	int start_time;
+	int start_timestamp;//时间戳
 	
 	unsigned int send_serial;//!< 发送请求序号,每次递增1
 	unsigned int recv_serial;//!< 接收序号,即对方发送序号

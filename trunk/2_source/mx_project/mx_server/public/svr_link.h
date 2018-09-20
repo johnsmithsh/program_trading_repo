@@ -63,14 +63,21 @@ int svrlink_listen(SVRLINK_HANDLE link_handle, char *ip, int port, int bcc_id);
  *   0-成功; <0-失败;
  **/
 int svrlink_connect(SVRLINK_HANDLE svrlinkhandle,  char *ip, int port, char *errmsg);
+int svrlink_ans_connect(SVRLINK_HANDLE svrlinkhandle, unsigned int bcc_id, unsigned int bu_no, char if_succ, const char *szmsg, char *errmsg);
+
+int svrlink_ack(SVRLINK_HANDLE svrlinkhandle, ST_MSG_HEAD *msg_head_ptr, char if_succ, char *szMsg);
 
 // @brief 断开连接 MSGTYPE_DISCONN
-int svrlink_disconnect(SVRLINK_HANDLE link_handle);
+int svrlink_disconnect(SVRLINK_HANDLE svrlinkhandle, char *errmsg);
+int svrlink_ans_disconnection(SVRLINK_HANDLE svrlinkhandle, char if_succ, const char *szmsg, char *errmsg);
 
 //@brief 客户端=>控制中心: 注册业务功能号
 //     MSGTYPE_REG_FUNC
 int svrlink_register_function(SVRLINK_HANDLE svrlinkhandle, char *register_info, size_t len, char *errmsg);
+int svrlink_ans_register_function(SVRLINK_HANDLE svrlinkhandle, char if_succ, const char *szmsg, char *errmsg);
 
+int svrlink_heatbeat(SVRLINK_HANDLE svrlinkhandle, char *errmsg);
+int svrlink_ans_heatbeat(SVRLINK_HANDLE svrlinkhandle, char if_succ, const char *szmsg, char *errmsg);
 
 //@brief 请求应答 MSGTYPE_REQ_REQUEST
 int svrlink_request(SVRLINK_HANDLE svrlinkhandle, unsigned char *data, int data_len, char *szMsg);

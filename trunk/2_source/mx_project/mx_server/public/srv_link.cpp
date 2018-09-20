@@ -17,11 +17,43 @@ int svrlink_create()
     return -1;
 }
 
-int svrlink_setinfo(SVRLINK_HANDLE svrlinkhandle, const char *group_no, const char *group_desc, const char *group_version, int pid)
+int svrhandle_init(SVRLINK_HANDLE svrlinkhandle)
 {
+	ST_SVR_LINK_HANDLE *svr_link=(ST_SVR_LINK_HANDLE*)svrlinkhandle;
+	memset(svr_link, 0, sizeof(ST_SVR_LINK_HANDLE));
+	return 0;
+}
+int svrhandle_set_groupinfo(SVRLINK_HANDLE svrlinkhandle, const char *group_no, const char *group_desc, const char *group_version, int pid)
+{
+    ST_SVR_LINK_HANDLE *svr_link=(ST_SVR_LINK_HANDLE*)svrlinkhandle;
+
+    strncpy(svr_link->link_info.group_no,   group_no,   sizeof(svr_link->link_info.group_no)-1);
+    strncpy(svr_link->link_info.group_desc, group_desc, sizeof(svr_link->link_info.group_desc)-1);
     return 0;
 }
 
+int svrhandle_set_linkinfo(SVRLINK_HANDLE svrlinkhandle, unsigned int bcc_id, unsigned int bu_no)
+{
+    ST_SVR_LINK_HANDLE *svr_link=(ST_SVR_LINK_HANDLE*)svrlinkhandle;
+    svr_link->link_info.bcc_id = bcc_id;
+    svr_link->link_info.bu_no  = bu_no;
+
+    return 0;
+}
+
+int svrhandle_set_socket(SVRLINK_HANDLE svrlinkhandle, int so)
+{
+    ST_SVR_LINK_HANDLE *svr_link=(ST_SVR_LINK_HANDLE*)svrlinkhandle;
+    svr_link->so = so;
+    return 0;
+}
+
+unsigned int svrhandle_next_serial(SVRLINK_HANDLE svrlinkhandle)
+{
+    ST_SVR_LINK_HANDLE *svr_link=(ST_SVR_LINK_HANDLE*)svrlinkhandle;
+    return ++svr_link->send_serial;
+}
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 int svrlink_connect(SVRLINK_HANDLE svrlinkhandle,  char *ip, int port, char *errmsg)
 {
     ST_MSGLINK_BUFF msg_buff;
@@ -258,6 +290,55 @@ int svrlink_ans_disconnection(SVRLINK_HANDLE svrlinkhandle, char if_succ, const 
 	body_ptr->bcc_id = svr_link->link_info.bcc_id;
 	body_ptr->bu_no  = svr_link->link_info.bu_no;
 
+	body_ptr->if_succ = if_succ;
+	strncpy(body_ptr->szmsg, szmsg, sizeof(body_ptr->szmsg)-1);
+
+	//todo send...
+	return 0;
+}
+
+
+int svrlink_heatbeat(SVRLINK_HANDLE svrlinkhandle, char *errmsg)
+{
+	ST_MSGLINK_BUFF msg_buff;
+
+	ST_SVR_LINK_HANDLE *svr_link=(ST_SVR_LINK_HANDLE*)svrlinkhandle;
+
+	//设置报文头
+	ST_MSG_HEAD *head_ptr= &msg_buff.head;
+	msglink_head_set_msgtypeinfo(head_ptr, MSGTYPE_HEARTBEAT, MASKHEAD_REQ);//消息类型+请求/应答/ack标记
+	head_ptr->data_len = sizeof(ST_MSG_COMMON);
+
+	//设置common信息
+	ST_MSG_COMMON *msg_common_ptr = &msg_buff.commoninfo;
+	memset(msg_common_ptr, 0, sizeof(ST_MSG_COMMON));
+	msglink_common_set_conninfo(msg_common_ptr, svr_link->link_info.bcc_id, svr_link->link_info.bu_no, svr_link->link_info.group_no);
+	msglink_common_set_ctrlinfo(msg_common_ptr, true, false, false, false);
+
+	//todo send...
+
+	return 0;
+}
+
+int svrlink_ans_heatbeat(SVRLINK_HANDLE svrlinkhandle, char if_succ, const char *szmsg, char *errmsg)
+{
+	ST_MSGLINK_BUFF msg_buff;
+
+	ST_SVR_LINK_HANDLE *svr_link=(ST_SVR_LINK_HANDLE*)svrlinkhandle;
+
+	//设置报文头
+	ST_MSG_HEAD *head_ptr= &msg_buff.head;
+	msglink_head_set_msgtypeinfo(head_ptr, MSGTYPE_HEARTBEAT, MASKHEAD_RSP);//消息类型+请求/应答/ack标记
+	head_ptr->data_len = sizeof(ST_MSG_COMMON)+sizeof(MSG_RSP);
+
+	//设置common信息
+	ST_MSG_COMMON *msg_common_ptr = &msg_buff.commoninfo;
+	memset(msg_common_ptr, 0, sizeof(ST_MSG_COMMON));
+	msglink_common_set_conninfo(msg_common_ptr, svr_link->link_info.bcc_id, svr_link->link_info.bu_no, svr_link->link_info.group_no);
+	msglink_common_set_ctrlinfo(msg_common_ptr, true, false, false, false);
+
+
+	MSG_RSP *body_ptr = (MSG_RSP *)msg_buff.data_buff;
 	body_ptr->if_succ = if_succ;
 	strncpy(body_ptr->szmsg, szmsg, sizeof(body_ptr->szmsg)-1);
 
