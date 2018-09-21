@@ -1,11 +1,38 @@
 #ifndef __MXX_SVR_LINK_H_
 #define __MXX_SVR_LINK_H_
 
+#include "msg_link_define.h"
 typedef void* SVRLINK_HANDLE;
 
-//@brief 创建连接句柄; 返回连接句柄; NULL-创建失败;
-SVRLINK_HANDLE svrlink_create();
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//连接句柄
+SVRLINK_HANDLE svrhandle_open();
+void           svrhandle_close(SVRLINK_HANDLE &svrlinkhandle);
+int            svrhandle_init(SVRLINK_HANDLE svrlinkhandle);
+int            svrhandle_set_groupinfo(SVRLINK_HANDLE svrlinkhandle, const char *group_no, const char *group_desc, const char *group_version, int pid);
+int            svrhandle_set_linkinfo(SVRLINK_HANDLE  svrlinkhandle, unsigned int bcc_id, unsigned int bu_no);
+int            svrhandle_set_socket(SVRLINK_HANDLE    svrlinkhandle, int so);
+unsigned int   svrhandle_next_serial(SVRLINK_HANDLE    svrlinkhandle);
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//组建报文 link msg assemble: lmasm
+//int lmasm_begin();
+//int lmasm_end();
+int lmasm_ack(ST_MSGLINK_BUFF  *linkmsg_ptr, SVRLINK_HANDLE svrlinkhandle,  ST_MSG_HEAD *msg_head_ptr, char if_succ, char *szMsg);
+//@连接请求
+int lmasm_connect(ST_MSGLINK_BUFF     *linkmsg_ptr, SVRLINK_HANDLE svrlinkhandle, char *ip, int port, char *errmsg);
+int lmasm_ans_connect(ST_MSGLINK_BUFF *linkmsg_ptr, SVRLINK_HANDLE svrlinkhandle, unsigned int bcc_id, unsigned int bu_no, char if_succ, const char *szmsg, char *errmsg);
+//@注册业务功能
+int lmasm_register_function(ST_MSGLINK_BUFF     * linkmsg_ptr, SVRLINK_HANDLE svrlinkhandle, char *register_info, size_t len, char *errmsg);
+int lmasm_ans_register_function(ST_MSGLINK_BUFF * linkmsg_ptr, SVRLINK_HANDLE svrlinkhandle, char if_succ, const char *szmsg, char *errmsg);
+//@断开链接
+int lmasm_disconnect(ST_MSGLINK_BUFF        *linkmsg_ptr, SVRLINK_HANDLE svrlinkhandle, char *errmsg);
+int lmasm_ans_disconnection(ST_MSGLINK_BUFF *linkmsg_ptr, SVRLINK_HANDLE svrlinkhandle, char if_succ, const char *szmsg, char *errmsg);
+//@心跳报文
+int lmasm_heatbeat(ST_MSGLINK_BUFF     *linkmsg_ptr, SVRLINK_HANDLE svrlinkhandle, char *errmsg);
+int lmasm_ans_heatbeat(ST_MSGLINK_BUFF *linkmsg_ptr, SVRLINK_HANDLE svrlinkhandle, char if_succ, const char *szmsg, char *errmsg);
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /** @brief 创建连接句柄; NULL-创建失败;
  *  @param
  *    [in]group_no: 组号; 业务进程存在组号; 控制中心没有组号;
