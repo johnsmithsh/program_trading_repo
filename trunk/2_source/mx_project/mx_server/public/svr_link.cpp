@@ -1,6 +1,11 @@
+#include <stdlib.h>
+#include <string.h>
+
 #include "svr_link.h"
 //#include "msg_link_define.h"
 #include "msg_link_function.h"
+
+#include "os_thread.h"
 
 int msg_send(const char *buff, size_t data_len)
 {
@@ -110,8 +115,8 @@ int lmasm_ans_connect(ST_MSGLINK_BUFF * linkmsg_ptr, SVRLINK_HANDLE svrlinkhandl
 	//设置链接应答信息
 	MSG_ANS_CONN *body_ptr=(MSG_ANS_CONN*)linkmsg_ptr->data_buff;
 	memset(body_ptr, 0, sizeof(MSG_ANS_CONN));
-	body_ptr->bcc_id = svr_link->link_info.bcc_id;
-	body_ptr->bu_no  = svr_link->link_info.bu_no;
+	body_ptr->bcc_id  = svr_link->link_info.bcc_id;
+	body_ptr->bu_no   = svr_link->link_info.bu_no;
 	body_ptr->if_succ = if_succ;//成功标记
 	strncpy(body_ptr->szmsg, szmsg, sizeof(body_ptr->szmsg)-1);
 

@@ -1,9 +1,39 @@
 #ifndef __MXX_SVR_LINK_H_
 #define __MXX_SVR_LINK_H_
 
+#include <stddef.h>
 #include "msg_link_define.h"
-typedef void* SVRLINK_HANDLE;
 
+
+//-------------------------------------------------------------------------------------------------------------------------------------------------
+//定义连接信息,描述控制中心与业务进程之间的连接
+typedef struct
+{
+    //业务组信息
+   char group_no[16];//!< 业务进程自己定义,不能重复
+	char group_desc[64];
+   int  bu_no; //!< 控制中心为业务进程分配
+
+   int  bcc_id;
+
+   int  link_mode;//!< 连接模式 bu对bu, bcc对bcc, bcc对bu
+   int  link_role; //!< 连接角色 业务服务角色, 控制中心角色;
+}ST_LINK_INFO;
+
+//连接句柄
+typedef struct
+{
+   ST_LINK_INFO link_info;
+	int so;
+	int start_timestamp;//时间戳
+
+	unsigned int send_serial;//!< 发送请求序号,每次递增1
+	unsigned int recv_serial;//!< 接收序号,即对方发送序号
+
+	char version[4];//协议版本号
+}ST_SVR_LINK_HANDLE;
+
+typedef void* SVRLINK_HANDLE;
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //连接句柄
 SVRLINK_HANDLE svrhandle_open();
@@ -32,6 +62,12 @@ int lmasm_ans_disconnection(ST_MSGLINK_BUFF *linkmsg_ptr, SVRLINK_HANDLE svrlink
 int lmasm_heatbeat(ST_MSGLINK_BUFF     *linkmsg_ptr, SVRLINK_HANDLE svrlinkhandle, char *errmsg);
 int lmasm_ans_heatbeat(ST_MSGLINK_BUFF *linkmsg_ptr, SVRLINK_HANDLE svrlinkhandle, char if_succ, const char *szmsg, char *errmsg);
 
+int lmasm_begin(ST_MSGLINK_BUFF  *linkmsg_ptr, unsigned int msgtype);
+//@@追加数据
+int lmasm_append(ST_MSGLINK_BUFF  *linkmsg_ptr, unsigned char *data_ptr, size_t len);
+//@获取数据指针,设置数据,然后修改长度; 可以防止拷贝,适用于大数据包
+
+int lmasm_end(bool next_flag=false);
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /** @brief 创建连接句柄; NULL-创建失败;
  *  @param
@@ -122,7 +158,8 @@ int svrlink_request(SVRLINK_HANDLE svrlinkhandle, unsigned char *data, int data_
 //    MSGTYPE_DATA
 int svrlink_transfer(SVRLINK_HANDLE svrlinkhandle, unsigned char *data_ptr, int data_len, bool first_flag, bool next_flag, char *errmsg);
 
-//brief 发送与接收消息数据 需要使用者填充报文头
+//@brief 接收消息数据 需要使用者填充报文头
 int svrlink_recv(SVRLINK_HANDLE link_handle,  ST_MSGLINK_BUFF *recv_buff, char *errmsg);
+//@brief 发送消息数据 需要使用者填充报文头
 int svrlink_send(SVRLINK_HANDLE link_handle,  ST_MSGLINK_BUFF *send_buff, char *errmsg);
 #endif

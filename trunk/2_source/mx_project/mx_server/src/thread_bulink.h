@@ -21,9 +21,13 @@
 #ifndef __MXX_BULINK_THREAD_H_
 #define __MXX_BULINK_THREAD_H_
 
+#include <deque>
+
 #include "thread_base.h"
 #include "msg_link_define.h"
 #include "itc_mutex.h"
+#include "taskinfo.h"
+#include "svr_link.h"
 
 #define MXX_SOCKET_INVALID_FD  -1 //!< 无效socket文件描述符
 
@@ -51,7 +55,7 @@ typedef struct __st_bulink_static
 class CBuLinkThread : public Thread_Base
 {
    public:
-     CBuLinkThread(const char *thread_name="bulisten_thread");
+     CBuLinkThread(const char *thread_name="bu_thread");
      virtual ~CBuLinkThread();
    private:
      //禁用拷贝构造函数
@@ -63,7 +67,8 @@ class CBuLinkThread : public Thread_Base
      virtual int terminate_service();//!< 线程退出命令
    public:
      int loadini(char *cfgfile);
-	 int bind_to_socket(int so);
+     int bind_to_socket(int so);
+     void get_bulinkinfo(ST_SVR_LINK_HANDLE &bulinkinfo);
    public://对外接口
      //@brief (向该线程)分配任务;
 	 // 注: 处理业务数据就不适用回调函数了,处理结果放入到应答队列,调用者自取处理结果;
@@ -111,26 +116,29 @@ class CBuLinkThread : public Thread_Base
      //业务进程相关信息
      int  m_group_id;//!< 该服务组(支持业务)信息描述索引; 本服务产生
      char m_group_no[64];   //!< 进程所属, 服务组号; 底层服务注册;
-	 char m_buversion[16];  //!< 业务版本信息; 底层服务注册
-	 char m_buprogname[64]; //!< 另一端业务进程的程序名
-	 char m_bu_pid[32];     //!< 业务进程id
-	 int  m_buno;//!< 控制中心分配给业务进程的业务号
+     char m_buversion[16];  //!< 业务版本信息; 底层服务注册
+     char m_buprogname[64]; //!< 另一端业务进程的程序名
+     char m_bu_pid[32];     //!< 业务进程id
+     int  m_bu_no;//!< 控制中心分配给业务进程的业务号
 	 
 	 //socket相关信息
      int m_sock_fd;     //!< 服务端口号
      int m_max_listen;  //!< 最大连接数
      int m_recv_timeout;//!< socket接收超时时间,单位毫秒
      int m_send_timeout;//!< socket发送超时时间,单位毫秒
-     
+
+     //bu连接信息
+     ST_SVR_LINK_HANDLE m_link_handle;
+
 	 //业务连接状态
 	 int m_link_stat; //!< 服务状态,见LNK_STAT_XXX定义
      
 	 //服务是否在运行
 	 bool m_b_running;//!< 表明服务是否在运行; true-在run循环中;false-退出run循环;
-     bool m_stop_flag;//!< 服务停止命令标记; HEARTBEAT_STOP_TRUE-收到停止命令, 服务需要退出; HEARTBEAT_STOP_FALSE-没有收到停止命令,服务可以继续运行;
+    bool m_stop_flag;//!< 服务停止命令标记; HEARTBEAT_STOP_TRUE-收到停止命令, 服务需要退出; HEARTBEAT_STOP_FALSE-没有收到停止命令,服务可以继续运行;
 	 
 	 ST_BUTHREAD_STATIC m_static;//!< 统计时间
-  private;
+   private:
      std::deque<CTaskInfo> m_req_que;//!< 任务请求列表
 	 
 };

@@ -37,8 +37,8 @@ class CBuGroupInfo
 	void clear();//清理数据
   public:
     void        set_groupid(int group_id) { m_group_item.group_id=group_id;}
-	int         get_groupid() const       { return m_group_item.group_id;  }
-	const char *get_groupno()             { return (const char *)m_group_item.group_no;  }
+    int         get_groupid() const       { return m_group_item.group_id;  }
+    const char *get_groupno()             { return (const char *)m_group_item.group_no;  }
 	
 	//@brief 设置业务组信息
 	int set_group_item(char *group_no, char *group_name, char *prog_name);
@@ -47,12 +47,12 @@ class CBuGroupInfo
 	
 	//@brief 注册业务功能
     int register_func(int group_id, char *func_id, char *func_desc);
-	int register_func(ST_BUFUNC_DESC *func_item_ptr);
-	//@brief 注销业务功能; 删除业务功能信息与统计信息;
-	int unregister_func(int group_id, char *func_id);
-	int unregister_func(char *func_id);
-	//@brief 禁用业务功能; 只是禁用,业务功能信息仍然保留
-	int forbid_func(char *func_id, bool bForbid=false);
+    int register_func(ST_BUFUNC_DESC *func_item_ptr);
+    //@brief 注销业务功能; 删除业务功能信息与统计信息;
+    int unregister_func(int group_id, char *func_id);
+    int unregister_func(char *func_id);
+    //@brief 禁用业务功能; 只是禁用,业务功能信息仍然保留
+    int forbid_func(char *func_id, bool bForbid=false);
 	
 	//CBuFuncList &get_func_list();
 	

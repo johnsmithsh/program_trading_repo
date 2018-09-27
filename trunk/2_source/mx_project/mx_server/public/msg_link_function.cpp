@@ -6,141 +6,141 @@
 #include "msg_link_function.h"
 
 
-/** 
- * @brief 构建建立连接报文
- * @param
- *    [in]group_no: 业务组号
- *    [in]group_desc: 业务组描述
- *    [in]group_version: 业务组版本
- *
- *    [out]buff:缓存指针
- *    [in]buffsize:缓存大小
- * @retval
- *    0-成功; <0-失败;
- */
-int lmasm_req_conn(const char *group_no, const char *group_desc, const char *group_version, int pid, char *buff, size_t buffsize)
-{
-    if( (NULL==buff)||(buffsize<sizeof(ST_MSG_HEAD)+sizeof(MSG_REQ_CONN)) )
-        return -1;
-    memset(buff, 0, sizeof(ST_MSG_HEAD)+sizeof(MSG_REQ_CONN));
-    ST_MSG_HEAD *head_ptr=(ST_MSG_HEAD*)buff;
-    //设置报文头
-    head_ptr->msgid=MSGTYPE_CONN;
-    head_ptr->data_len = sizeof(MSG_REQ_CONN);
-    
-    MSG_REQ_CONN *body_ptr=(MSG_REQ_CONN*)(buff+sizeof(ST_MSG_HEAD));
-    strncpy(body_ptr->group_no,   group_no, sizeof(body_ptr->group_no)-1);//!< 设置业务组号
-    strncpy(body_ptr->group_desc, group_desc, sizeof(body_ptr->group_desc)-1);//!< 设置业务组描述信息
-    strncpy(body_ptr->version, group_version, sizeof(body_ptr->version));//!< 设置版本信息
-    return 0;    
-}
-
-/** 
- * @brief 构建建立连接应答报文
- * @param
- *    [in]bu_no: 控制中心为业务服务分配的id;每个服务进程都不相同;
- *    [in]bcc_id: 本业务中心id
- *    [in]if_succ/szmsg: 成功标记及说明信息
- *
- *    [out]buff:缓存指针
- *    [in]buffsize:缓存大小
- * @retval
- *    0-成功; <0-失败;
- */
-int lmasm_ans_conn(int bu_no, int bcc_id, char if_succ, const char *szmsg, char *buff, size_t buffsize)
-{
-    if( (NULL==buff)||(buffsize<sizeof(ST_MSG_HEAD)+sizeof(MSG_ANS_CONN)) )
-        return -1;
-    memset(buff, 0, sizeof(ST_MSG_HEAD)+sizeof(MSG_ANS_CONN));
-    ST_MSG_HEAD *head_ptr=(ST_MSG_HEAD*)buff;
-    //设置报文头
-    head_ptr->msgid=MSGTYPE_CONN;
-    head_ptr->data_len = sizeof(MSG_ANS_CONN);
-    
-    MSG_ANS_CONN *body_ptr=(MSG_ANS_CONN*)(buff+sizeof(ST_MSG_HEAD));
-    body_ptr->bu_no=bu_no;//!< 分配业务服务id
-    body_ptr->bcc_id=bcc_id;//!< 设置本业务中心id
-    body_ptr->if_succ=if_succ;//!< 设置成功标记
-    strncpy(body_ptr->szmsg, szmsg, sizeof(body_ptr->szmsg)-1);
-    return 0;    
-}
-
-//---------------------------------------------------------------------------------------
-/** 
- * @brief 构建注册业务功能报文初始化
- * @param.
- *    [out]buff:缓存指针
- *    [in]buffsize:缓存大小
- * @retval
- *    0-成功; <0-失败;
- */
-int lmasm_req_regfunc_init(char *buff, size_t buffsize)
-{
-    if( (NULL==buff)||(buffsize<sizeof(ST_MSG_HEAD)) )
-        return -1;
-    memset(buff, 0, sizeof(ST_MSG_HEAD));
-    ST_MSG_HEAD *head_ptr=(ST_MSG_HEAD*)buff;
-    //设置报文头
-    head_ptr->msgid=MSGTYPE_REG_FUNC;
-    head_ptr->data_len = 0;
-    return 0;
-}
-
-/** 
- * @brief 注册业务功能报文 增加业务功能信息
- * @param
- *    [in]func_id,func_desc: 业务id与业务描述;
- *    [in]func_type:业务类型
- *    [out]buff:缓存指针
- *    [in]buffsize:缓存大小
- * @retval
- *    0-成功; <0-失败;
- * @note
- *    调用该函数前必须先初始化报文头
- */
-int lmasm_req_regfunc_funcinfo_append(const char *func_id, const char *func_desc, char func_type, char *buff, size_t buffsize)
-{
-    if( (NULL==buff) )
-        return -1;
-    ST_MSG_HEAD *head_ptr=(ST_MSG_HEAD*)buff;
-    if( buffsize<(head_ptr->data_len+sizeof(MSG_REQ_REGFUNC)) )
-        return -2;
-    
-    //设置报文头
-    MSG_REQ_REGFUNC *func_info_ptr=(MSG_REQ_REGFUNC*)(buff+sizeof(ST_MSG_HEAD)+head_ptr->data_len);
-    strncpy(func_info_ptr->bu_func_id, func_id, sizeof(func_info_ptr->bu_func_id)-1);
-    strncpy(func_info_ptr->bu_func_desc, func_desc, sizeof(func_info_ptr->bu_func_desc)-1);
-    func_info_ptr->bu_func_type=func_type;
-
-    head_ptr->data_len += sizeof(MSG_REQ_REGFUNC);
-    return 0;
-}
-
-/** 
- * @brief 构建注册函数应答报文
- * @param
- *    [in]if_succ/szmsg: 成功标记及说明信息
- *
- *    [out]buff:缓存指针
- *    [in]buffsize:缓存大小
- * @retval
- *    0-成功; <0-失败;
- */
-int lmasm_ans_regfunc(char if_succ, const char *szmsg, char *buff, size_t buffsize)
-{
-    if( (NULL==buff)||(buffsize<sizeof(ST_MSG_HEAD)+sizeof(MSG_ANS_REGFUNC)) )
-        return -1;
-    memset(buff, 0, sizeof(ST_MSG_HEAD)+sizeof(MSG_ANS_REGFUNC));
-    ST_MSG_HEAD *head_ptr=(ST_MSG_HEAD*)buff;
-    //设置报文头
-    head_ptr->msgid=MSGTYPE_REG_FUNC;
-    head_ptr->data_len = sizeof(MSG_ANS_REGFUNC);
-    //设置报文数据
-    MSG_ANS_REGFUNC *body_ptr=(MSG_ANS_REGFUNC*)(buff+sizeof(ST_MSG_HEAD));
-    body_ptr->if_succ=if_succ;//!< 分配业务服务id
-    strncpy(body_ptr->szmsg, szmsg, sizeof(body_ptr->szmsg)-1);
-    return 0;    
-}
+///** 
+// * @brief 构建建立连接报文
+// * @param
+// *    [in]group_no: 业务组号
+// *    [in]group_desc: 业务组描述
+// *    [in]group_version: 业务组版本
+// *
+// *    [out]buff:缓存指针
+// *    [in]buffsize:缓存大小
+// * @retval
+// *    0-成功; <0-失败;
+// */
+//int lmasm_req_conn(const char *group_no, const char *group_desc, const char *group_version, int pid, char *buff, size_t buffsize)
+//{
+//    if( (NULL==buff)||(buffsize<sizeof(ST_MSG_HEAD)+sizeof(MSG_REQ_CONN)) )
+//        return -1;
+//    memset(buff, 0, sizeof(ST_MSG_HEAD)+sizeof(MSG_REQ_CONN));
+//    ST_MSG_HEAD *head_ptr=(ST_MSG_HEAD*)buff;
+//    //设置报文头
+//    head_ptr->msgid=MSGTYPE_CONN;
+//    head_ptr->data_len = sizeof(MSG_REQ_CONN);
+//    
+//    MSG_REQ_CONN *body_ptr=(MSG_REQ_CONN*)(buff+sizeof(ST_MSG_HEAD));
+//    strncpy(body_ptr->group_no,   group_no, sizeof(body_ptr->group_no)-1);//!< 设置业务组号
+//    strncpy(body_ptr->group_desc, group_desc, sizeof(body_ptr->group_desc)-1);//!< 设置业务组描述信息
+//    strncpy(body_ptr->version, group_version, sizeof(body_ptr->version));//!< 设置版本信息
+//    return 0;    
+//}
+//
+///** 
+// * @brief 构建建立连接应答报文
+// * @param
+// *    [in]bu_no: 控制中心为业务服务分配的id;每个服务进程都不相同;
+// *    [in]bcc_id: 本业务中心id
+// *    [in]if_succ/szmsg: 成功标记及说明信息
+// *
+// *    [out]buff:缓存指针
+// *    [in]buffsize:缓存大小
+// * @retval
+// *    0-成功; <0-失败;
+// */
+//int lmasm_ans_conn(int bu_no, int bcc_id, char if_succ, const char *szmsg, char *buff, size_t buffsize)
+//{
+//    if( (NULL==buff)||(buffsize<sizeof(ST_MSG_HEAD)+sizeof(MSG_ANS_CONN)) )
+//        return -1;
+//    memset(buff, 0, sizeof(ST_MSG_HEAD)+sizeof(MSG_ANS_CONN));
+//    ST_MSG_HEAD *head_ptr=(ST_MSG_HEAD*)buff;
+//    //设置报文头
+//    head_ptr->msgid=MSGTYPE_CONN;
+//    head_ptr->data_len = sizeof(MSG_ANS_CONN);
+//    
+//    MSG_ANS_CONN *body_ptr=(MSG_ANS_CONN*)(buff+sizeof(ST_MSG_HEAD));
+//    body_ptr->bu_no=bu_no;//!< 分配业务服务id
+//    body_ptr->bcc_id=bcc_id;//!< 设置本业务中心id
+//    body_ptr->if_succ=if_succ;//!< 设置成功标记
+//    strncpy(body_ptr->szmsg, szmsg, sizeof(body_ptr->szmsg)-1);
+//    return 0;    
+//}
+//
+////---------------------------------------------------------------------------------------
+///** 
+// * @brief 构建注册业务功能报文初始化
+// * @param.
+// *    [out]buff:缓存指针
+// *    [in]buffsize:缓存大小
+// * @retval
+// *    0-成功; <0-失败;
+// */
+//int lmasm_req_regfunc_init(char *buff, size_t buffsize)
+//{
+//    if( (NULL==buff)||(buffsize<sizeof(ST_MSG_HEAD)) )
+//        return -1;
+//    memset(buff, 0, sizeof(ST_MSG_HEAD));
+//    ST_MSG_HEAD *head_ptr=(ST_MSG_HEAD*)buff;
+//    //设置报文头
+//    head_ptr->msgid=MSGTYPE_REG_FUNC;
+//    head_ptr->data_len = 0;
+//    return 0;
+//}
+//
+///** 
+// * @brief 注册业务功能报文 增加业务功能信息
+// * @param
+// *    [in]func_id,func_desc: 业务id与业务描述;
+// *    [in]func_type:业务类型
+// *    [out]buff:缓存指针
+// *    [in]buffsize:缓存大小
+// * @retval
+// *    0-成功; <0-失败;
+// * @note
+// *    调用该函数前必须先初始化报文头
+// */
+//int lmasm_req_regfunc_funcinfo_append(const char *func_id, const char *func_desc, char func_type, char *buff, size_t buffsize)
+//{
+//    if( (NULL==buff) )
+//        return -1;
+//    ST_MSG_HEAD *head_ptr=(ST_MSG_HEAD*)buff;
+//    if( buffsize<(head_ptr->data_len+sizeof(MSG_REQ_REGFUNC)) )
+//        return -2;
+//    
+//    //设置报文头
+//    MSG_REQ_REGFUNC *func_info_ptr=(MSG_REQ_REGFUNC*)(buff+sizeof(ST_MSG_HEAD)+head_ptr->data_len);
+//    strncpy(func_info_ptr->bu_func_id, func_id, sizeof(func_info_ptr->bu_func_id)-1);
+//    strncpy(func_info_ptr->bu_func_desc, func_desc, sizeof(func_info_ptr->bu_func_desc)-1);
+//    func_info_ptr->bu_func_type=func_type;
+//
+//    head_ptr->data_len += sizeof(MSG_REQ_REGFUNC);
+//    return 0;
+//}
+//
+///** 
+// * @brief 构建注册函数应答报文
+// * @param
+// *    [in]if_succ/szmsg: 成功标记及说明信息
+// *
+// *    [out]buff:缓存指针
+// *    [in]buffsize:缓存大小
+// * @retval
+// *    0-成功; <0-失败;
+// */
+//int lmasm_ans_regfunc(char if_succ, const char *szmsg, char *buff, size_t buffsize)
+//{
+//    if( (NULL==buff)||(buffsize<sizeof(ST_MSG_HEAD)+sizeof(MSG_ANS_REGFUNC)) )
+//        return -1;
+//    memset(buff, 0, sizeof(ST_MSG_HEAD)+sizeof(MSG_ANS_REGFUNC));
+//    ST_MSG_HEAD *head_ptr=(ST_MSG_HEAD*)buff;
+//    //设置报文头
+//    head_ptr->msgid=MSGTYPE_REG_FUNC;
+//    head_ptr->data_len = sizeof(MSG_ANS_REGFUNC);
+//    //设置报文数据
+//    MSG_ANS_REGFUNC *body_ptr=(MSG_ANS_REGFUNC*)(buff+sizeof(ST_MSG_HEAD));
+//    body_ptr->if_succ=if_succ;//!< 分配业务服务id
+//    strncpy(body_ptr->szmsg, szmsg, sizeof(body_ptr->szmsg)-1);
+//    return 0;    
+//}
 ////----------------------------------------------------------------------------------------
 ///** 
 // * @brief 业务请求报文初始化

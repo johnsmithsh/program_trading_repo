@@ -103,8 +103,27 @@ int CBuLinkThread::clear_buinfo()
 	memset(m_buversion, 0, sizeof(m_buversion));
 	memset(m_buprogname, 0, sizeof(m_buprogname));
 	memset(m_bu_pid, 0, sizeof(m_bu_pid));
-	m_buno = MSG_BUNO_INVALID;
+	m_bu_no = MSG_BUNO_INVALID;
 	return 0;
+}
+
+void CBuLinkThread::get_bulinkinfo(ST_SVR_LINK_HANDLE &bulinkinfo)
+{
+	memset(&bulinkinfo, 0, sizeof(ST_SVR_LINK_HANDLE));
+
+	CServerContext *context_ptr=CServerContext::get_instance();//一般不会返回NULL
+	bulinkinfo.link_info.bcc_id =context_ptr->get_bcc_id();
+	bulinkinfo.link_info.bu_no  = m_bu_no;
+	strncpy(bulinkinfo.link_info.group_no, m_group_no, sizeof(bulinkinfo.link_info.group_no)-1);
+	//bulinkinfo.link_info.group_desc;
+	//bulinkinfo.link_info.link_mode;
+	//bulinkinfo.link_info.link_role;
+
+	bulinkinfo.so = m_sock_fd;
+	//bulinkinfo.recv_serial;
+	//bulinkinfo.send_serial;
+	//bulinkinfo.start_timestamp;
+	//bulinkinfo.version;
 }
 
 int CBuLinkThread::clear_sockinfo()
@@ -470,23 +489,21 @@ int CBuLinkThread::process_bulink(ST_MSGLINK_BUFF *msg_buff_ptr)
 	CBuGroupInfo *group_info_ptr=CFuncRegister::find_groupinfo((char *)conn_ptr->group_no);//context_ptr->find_groupinfo(conn_ptr->group_no);
 	if(NULL==group_info_ptr)//业务组不存在,则增加业务组信息
 	{
-	    //ERROR_MSG("msgid=[0x%02x], group_no=[%s], group_desc=[%s], unsupport this group no", head_ptr->msgid, info_ptr->group_no, conn_ptr->group_desc);
-		//return -1;
+		//没有业务组,则增加新的业务组
 		ST_BUGROUP_ITEM group_item;
 		memset(&group_item, 0, sizeof(group_item));
-		strncpy((char*)group_item.group_no, conn_ptr->group_no, sizeof(group_item.group_no)-1);  //!< 业务组号, 业务进行分类,由业务进程连接时上传
-		strncpy((char*)group_item.group_no, conn_ptr->group_no, sizeof(group_item.group_no)-1);
-        //unsigned char group_name[32];//!< 组名, 由业务进程连接时上传
-	    strncpy(group_item.prog_name, conn_ptr->prog_name, sizeof(group_item.prog_name)-1); //!< 业务程序名,由业务进程连接时上传
+		strncpy((char*)group_item.group_no,    conn_ptr->group_no, sizeof(group_item.group_no)-1);  //!< 业务组号, 业务进行分类,由业务进程连接时上传
+      //unsigned char group_name[32];//!< 组名, 由业务进程连接时上传
+      strncpy(group_item.prog_name, conn_ptr->prog_name, sizeof(group_item.prog_name)-1); //!< 业务程序名,由业务进程连接时上传
 		rc=CFuncRegister::reginfo_add_group_info(&group_item);//!< 增加新的业务组
 		if(rc<0)
 		{
-		    ERROR_MSG("msgid=[0x%02x], group_no=[%s], group_desc=[%s], lack of group no", head_ptr->msgid, info_ptr->group_no, conn_ptr->group_desc);
+		    ERROR_MSG("msgid=[0x%02x], group_no=[%s], group_desc=[%s], failed to add new group", head_ptr->msgid, info_ptr->group_no, conn_ptr->group_desc);
 			return -1;
 		}
 		
 		group_info_ptr=CFuncRegister::find_groupinfo((char *)conn_ptr->group_no);
-		if(rc<0)
+		if(rc<0)//!< 不应该走到此处
 		{
 		    ERROR_MSG("msgid=[0x%02x], group_no=[%s], group_desc=[%s], add group info succ,but can not find group info", head_ptr->msgid, info_ptr->group_no, conn_ptr->group_desc);
 			return -1;
@@ -506,30 +523,34 @@ int CBuLinkThread::process_bulink(ST_MSGLINK_BUFF *msg_buff_ptr)
 	snprintf(m_bu_pid, sizeof(m_bu_pid)-1, "%ld", conn_ptr->proc_id);//!< 业务进程id
 	
 	int bu_no=context_ptr->get_next_buno();//生成新bu_no
-	m_buno=bu_no;
+	m_bu_no=bu_no;
 	
 	//应答...
+	ST_SVR_LINK_HANDLE bulinkinfo;
+	get_bulinkinfo(bulinkinfo);
+
 	ST_MSGLINK_BUFF msg_rsp_buff;
-	
 	int bcc_id=context_ptr->get_bcc_id();//获取当前控制中心id
+	lmasm_ans_connect(&msg_rsp_buff, &bulinkinfo, bcc_id, m_bu_no, C_YES, "", NULL); //!<构建应答报文
+
+	////设置msg id
+	//msglink_pkg_head_init((unsigned char *)&msg_rsp_buff, sizeof(msg_rsp_buff), MSGTYPE_CONN, szmsg);
+	////设置连接信息
+	//msglink_pkg_conninfo((unsigned char *)&msg_rsp_buff, sizeof(msg_rsp_buff), bcc_id, bu_no,conn_ptr->group_no, szmsg);
+	////设置控制信息
+	//bool first_flag=true,next_flag=false, ack_flag=true,push_flag=false;
+	//msglink_pkg_ctrlinfo((unsigned char *)&msg_rsp_buff, sizeof(msg_rsp_buff), first_flag, next_flag, ack_flag, push_flag, szmsg);
+	//
+	//
+	////增加业务数据
+	//MSG_ANS_CONN rsp_data;
+	//memset(&rsp_data, 0, sizeof(rsp_data));
+	//rsp_data.bu_no=bu_no;
+	//rsp_data.bcc_id=bcc_id;
+	//rsp_data.if_succ=C_YES;//成功标记
+	//msglink_pkg_data_append((unsigned char *)&msg_rsp_buff, sizeof(msg_rsp_buff), (unsigned char *)&rsp_data, sizeof(rsp_data), szmsg);
 	
-	//设置msg id
-	msglink_pkg_head_init((unsigned char *)&msg_rsp_buff, sizeof(msg_rsp_buff), MSGTYPE_CONN, szmsg);
-	//设置连接信息
-	msglink_pkg_conninfo((unsigned char *)&msg_rsp_buff, sizeof(msg_rsp_buff), bcc_id, bu_no,conn_ptr->group_no, szmsg);
-	//设置控制信息
-	bool first_flag=true,next_flag=false, ack_flag=true,push_flag=false;
-	msglink_pkg_ctrlinfo((unsigned char *)&msg_rsp_buff, sizeof(msg_rsp_buff), first_flag, next_flag, ack_flag, push_flag, szmsg);
-	
-	
-	//增加业务数据
-	MSG_ANS_CONN rsp_data;
-	memset(&rsp_data, 0, sizeof(rsp_data));
-	rsp_data.bu_no=bu_no;
-	rsp_data.bcc_id=bcc_id;
-	rsp_data.if_succ=C_YES;//成功标记
-	msglink_pkg_data_append((unsigned char *)&msg_rsp_buff, sizeof(msg_rsp_buff), (unsigned char *)&rsp_data, sizeof(rsp_data), szmsg);
-	
+
 	//发送数据
 	rc=msglink_send(m_sock_fd, (unsigned char *)&msg_rsp_buff, msg_rsp_buff.head.data_len+sizeof(msg_rsp_buff.head), szmsg);
 	if(rc<0)//接收错误
@@ -557,7 +578,8 @@ int CBuLinkThread::process_disconn(ST_MSGLINK_BUFF *msg_buff_ptr)
 	{
 	    return -1;
 	}
-	
+	m_link_stat=LNK_STAT_DISCONNING;//!< 修改连接状态
+
 	//ACK消息不用处理,直接返回即可
 	//if(msglink_check_ccflag((unsigned char *)&msg_buff, CC_ACK_FLAG))
 	//{
@@ -571,22 +593,22 @@ int CBuLinkThread::process_disconn(ST_MSGLINK_BUFF *msg_buff_ptr)
 	ST_MSGLINK_BUFF msg_rsp_buff;
 	
 	int bcc_id=context_ptr->get_bcc_id();//获取当前控制中心id
+	ST_SVR_LINK_HANDLE bulinkinfo;
+	get_bulinkinfo(bulinkinfo);
+	lmasm_ans_disconnection(&msg_rsp_buff, &bulinkinfo, C_YES, "", NULL); //!<构建应答报文
 	
-	//设置msg id
-	msglink_pkg_head_init((unsigned char *)&msg_rsp_buff, sizeof(msg_rsp_buff), MSGTYPE_DISCONN, szmsg);
-	//设置连接信息
-	msglink_pkg_conninfo((unsigned char *)&msg_rsp_buff, sizeof(msg_rsp_buff), bcc_id, m_buno, info_ptr->group_no, szmsg);
-	//设置控制信息
-	bool first_flag=true,next_flag=false, ack_flag=true,push_flag=false;
-	msglink_pkg_ctrlinfo((unsigned char *)&msg_rsp_buff, sizeof(msg_rsp_buff), first_flag, next_flag, ack_flag, push_flag, szmsg);
-	
-	MSG_RSP rsp_data;//应答信息
-	rsp_data.if_succ=C_YES;
-	msglink_pkg_data_append((unsigned char *)&msg_rsp_buff, sizeof(msg_rsp_buff), (unsigned char *)&rsp_data, sizeof(rsp_data), szmsg);
-	
-	
-	m_link_stat=LNK_STAT_DISCONNING;//!< 修改连接状态
-	
+	////设置msg id
+	//msglink_pkg_head_init((unsigned char *)&msg_rsp_buff, sizeof(msg_rsp_buff), MSGTYPE_DISCONN, szmsg);
+	////设置连接信息
+	//msglink_pkg_conninfo((unsigned char *)&msg_rsp_buff, sizeof(msg_rsp_buff), bcc_id, m_bu_no, info_ptr->group_no, szmsg);
+	////设置控制信息
+	//bool first_flag=true,next_flag=false, ack_flag=true,push_flag=false;
+	//msglink_pkg_ctrlinfo((unsigned char *)&msg_rsp_buff, sizeof(msg_rsp_buff), first_flag, next_flag, ack_flag, push_flag, szmsg);
+	//
+	//MSG_RSP rsp_data;//应答信息
+	//rsp_data.if_succ=C_YES;
+	//msglink_pkg_data_append((unsigned char *)&msg_rsp_buff, sizeof(msg_rsp_buff), (unsigned char *)&rsp_data, sizeof(rsp_data), szmsg);
+
 	//发送数据
 	rc=msglink_send(m_sock_fd, (unsigned char *)&msg_rsp_buff, msg_rsp_buff.head.data_len+sizeof(msg_rsp_buff.head), szmsg);
 	if(rc<0)//接收错误
@@ -646,42 +668,42 @@ int CBuLinkThread::process_buregister(ST_MSGLINK_BUFF * msg_buff_ptr)
 		//group_info_ptr->register_func(0, funcinfo_ptr->bu_func_id, funcinfo_ptr->bu_func_desc);//!< 注册业务功能
 		
 		if('\0'==funcinfo_ptr->bu_func_id[0])
-		    continue;
+			continue;
 
-		ST_BUFUNC_DESC func_desc;
-		memset(&func_desc, 0, sizeof(func_desc));
-		strncpy(func_desc.func_id,  funcinfo_ptr->bu_func_id,   sizeof(func_desc.func_id)-1);  //!< 业务功能id,   字符串格式
-	    strncpy(func_desc.func_name,funcinfo_ptr->bu_name,      sizeof(func_desc.func_name)-1);//!< 功能名
-        strncpy(func_desc.func_desc,funcinfo_ptr->bu_func_desc, sizeof(func_desc.func_desc)-1);//!< 业务功能说明
-	    //char func_prog_name[64];//!< 业务程序名
-	    func_desc.priority=funcinfo_ptr->priority;
-		func_desc.func_comm_type=funcinfo_ptr->bu_func_type;
-		rc=CFuncRegister::reginfo_register_func(group_info_ptr->get_groupid(), &func_desc);
+   	ST_BUFUNC_DESC func_desc;
+   	memset(&func_desc, 0, sizeof(func_desc));
+   	strncpy(func_desc.func_id,  funcinfo_ptr->bu_func_id,   sizeof(func_desc.func_id)-1);  //!< 业务功能id,   字符串格式
+      strncpy(func_desc.func_name,funcinfo_ptr->bu_name,      sizeof(func_desc.func_name)-1);//!< 功能名
+      strncpy(func_desc.func_desc,funcinfo_ptr->bu_func_desc, sizeof(func_desc.func_desc)-1);//!< 业务功能说明
+      //char func_prog_name[64];//!< 业务程序名
+      func_desc.priority=funcinfo_ptr->priority;
+      func_desc.func_comm_type=funcinfo_ptr->bu_func_type;
+      rc=CFuncRegister::reginfo_register_func(group_info_ptr->get_groupid(), &func_desc);
 		ptr += sizeof(MSG_REQ_REGFUNC);
 	}
 	
 	//应答...
 	//构建应答域..
 	ST_MSGLINK_BUFF msg_ack_buff;
-	int bcc_id=context_ptr->get_bcc_id();//获取当前控制中心id
-	int bu_no=context_ptr->get_next_buno();//生成新bu_no
+	int bcc_id =context_ptr->get_bcc_id();//获取当前控制中心id
+	ST_SVR_LINK_HANDLE bulinkinfo;
+	get_bulinkinfo(bulinkinfo);
+	lmasm_ans_register_function(&msg_ack_buff, &bulinkinfo, C_YES, "", NULL); //!<构建应答报文
 	
-	//设置消息头
-	msglink_pkg_head_init((unsigned char *)&msg_ack_buff, sizeof(msg_ack_buff), MSGTYPE_REG_FUNC, szmsg);//!< 设置msg id
-	
-	//连接信息
-	msglink_pkg_conninfo((unsigned char *)&msg_ack_buff, sizeof(msg_ack_buff), bcc_id, bu_no,info_ptr->group_no, szmsg);//!< 设置连接信息
-	
-	//控制信息
-	bool first_flag=true,next_flag=false, ack_flag=true,push_flag=false;
-	msglink_pkg_ctrlinfo((unsigned char *)&msg_ack_buff, sizeof(msg_ack_buff), first_flag, next_flag, ack_flag, push_flag, szmsg);//!< 设置控制信息
-	
-	//增加业务数据
-	MSG_ACK rsp_data;
-	memset(&rsp_data, 0, sizeof(rsp_data));
-	rsp_data.if_succ=C_YES;//成功标记
-	rsp_data.szmsg[0]='\0';
-	msglink_pkg_data_append((unsigned char *)&msg_ack_buff, sizeof(msg_ack_buff), (unsigned char *)&rsp_data, sizeof(rsp_data), szmsg);
+	////设置消息头
+	//msglink_pkg_head_init((unsigned char *)&msg_ack_buff, sizeof(msg_ack_buff), MSGTYPE_REG_FUNC, szmsg);//!< 设置msg id
+	////连接信息
+	//msglink_pkg_conninfo((unsigned char *)&msg_ack_buff, sizeof(msg_ack_buff), bcc_id, m_bu_no,info_ptr->group_no, szmsg);//!< 设置连接信息
+	////控制信息
+	//bool first_flag=true,next_flag=false, ack_flag=true,push_flag=false;
+	//msglink_pkg_ctrlinfo((unsigned char *)&msg_ack_buff, sizeof(msg_ack_buff), first_flag, next_flag, ack_flag, push_flag, szmsg);//!< 设置控制信息
+	//
+	////增加业务数据
+	//MSG_ACK rsp_data;
+	//memset(&rsp_data, 0, sizeof(rsp_data));
+	//rsp_data.if_succ=C_YES;//成功标记
+	//rsp_data.szmsg[0]='\0';
+	//msglink_pkg_data_append((unsigned char *)&msg_ack_buff, sizeof(msg_ack_buff), (unsigned char *)&rsp_data, sizeof(rsp_data), szmsg);
 	
 	//发送数据
 	//int data_len=0;

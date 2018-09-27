@@ -23,9 +23,10 @@ class CServerContext
 
   public:
       unsigned int m_bcc_id;//!< 本控制中心的id
+      unsigned int m_next_bu_no;
   public:
-      unsigned int get_bcc_id() { return m_bcc_id; }
-	  unsigned int get_next_buno() {  return 0; }
+      unsigned int get_bcc_id()    { return m_bcc_id; }
+      unsigned int get_next_buno() {  return ++m_next_bu_no; }
   //------------------------------------------------------------------------------------------------------
   //组相关信息
   public: //group相关操作

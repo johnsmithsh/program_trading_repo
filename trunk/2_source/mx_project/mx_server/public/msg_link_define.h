@@ -341,33 +341,7 @@ typedef struct //!< ACK消息
 	char szmsg[255];
 }MSG_ACK;
 
-//-------------------------------------------------------------------------------------------------------------------------------------------------
-//定义连接信息,描述控制中心与业务进程之间的连接
-typedef struct
-{
-    //业务组信息
-   char group_no[16];//!< 业务进程自己定义,不能重复
-	char group_desc[64];
-   int  bu_no; //!< 控制中心为业务进程分配
-    
-   int  bcc_id;
-    
-   int  link_mode;//!< 连接模式 bu对bu, bcc对bcc, bcc对bu
-   int  link_role; //!< 连接角色 业务服务角色, 控制中心角色;
-}ST_LINK_INFO;
 
-//连接句柄
-typedef struct
-{
-   ST_LINK_INFO link_info;
-	int so;
-	int start_timestamp;//时间戳
-	
-	unsigned int send_serial;//!< 发送请求序号,每次递增1
-	unsigned int recv_serial;//!< 接收序号,即对方发送序号
-	
-	char version[4];//协议版本号
-}ST_SVR_LINK_HANDLE;
 
 
 

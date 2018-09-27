@@ -3,7 +3,7 @@
 
 #include "msg_link_define.h"
 
-#define MSG_LNK_ERR_INVALID_BUFF -1 //!< 无效缓存
+//#define MSG_LNK_ERR_INVALID_BUFF -1 //!< 无效缓存
 
 // lmasm: link msg assemble
 /** 
@@ -18,7 +18,7 @@
  * @retval
  *    0-成功; <0-失败;
  */
-int lmasm_req_conn(const char *group_no, const char *group_desc, const char *group_version, int pid, char *buff, size_t buffsize);
+//int lmasm_req_conn(const char *group_no, const char *group_desc, const char *group_version, int pid, char *buff, size_t buffsize);
 
 /** 
  * @brief 构建建立连接应答报文
@@ -32,7 +32,7 @@ int lmasm_req_conn(const char *group_no, const char *group_desc, const char *gro
  * @retval
  *    0-成功; <0-失败;
  */
-int lmasm_ans_conn(int bu_no, int bcc_id, char if_succ, const char *szmsg, char *buff, size_t buffsize);
+//int lmasm_ans_conn(int bu_no, int bcc_id, char if_succ, const char *szmsg, char *buff, size_t buffsize);
 
 /** 
  * @brief 构建注册业务功能报文初始化
@@ -42,7 +42,7 @@ int lmasm_ans_conn(int bu_no, int bcc_id, char if_succ, const char *szmsg, char 
  * @retval
  *    0-成功; <0-失败;
  */
-int lmasm_req_regfunc_init(char *buff, size_t buffsize);
+//int lmasm_req_regfunc_init(char *buff, size_t buffsize);
 
 /** 
  * @brief 注册业务功能报文 增加业务功能信息
@@ -56,7 +56,7 @@ int lmasm_req_regfunc_init(char *buff, size_t buffsize);
  * @note
  *    调用该函数前必须先初始化报文头
  */
-int lmasm_req_regfunc_funcinfo_append(const char *func_id, const char *func_desc, char func_type, char *buff, size_t buffsize);
+//int lmasm_req_regfunc_funcinfo_append(const char *func_id, const char *func_desc, char func_type, char *buff, size_t buffsize);
 
 /** 
  * @brief 注册业务功能应答报文
@@ -68,7 +68,7 @@ int lmasm_req_regfunc_funcinfo_append(const char *func_id, const char *func_desc
  * @retval
  *    0-成功; <0-失败;
  */
-int lmasm_ans_regfunc(char if_succ, const char *szmsg, char *buff, size_t buffsize);
+//int lmasm_ans_regfunc(char if_succ, const char *szmsg, char *buff, size_t buffsize);
 ////-----------------------------------------------
 ///** 
 // * @brief 业务请求报文初始化
