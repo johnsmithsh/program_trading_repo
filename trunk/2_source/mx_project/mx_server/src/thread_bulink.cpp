@@ -2,8 +2,9 @@
 #include <errno.h>
 #include <stdio.h>
 
-#include "mxx_net_socket.h"
 #include "thread_bulink.h"
+
+#include "mxx_net_socket.h"
 #include "logfile.h"
 #include "ConfigFile.h"
 #include "msg_link_function.h"
@@ -11,8 +12,136 @@
 #include "servercontext.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
-extern int msglink_send(int so, const unsigned char *buff, size_t data_len, char *errmsg);
-extern int msglink_recv(int so, unsigned char *buff, size_t buffsize, int *data_len, char *err_msg);
+#define MSG_SOCK_NO_DATA  -101 //没有数据
+#define MSG_SOCK_CLOSE    -102 //文件描述符关闭
+#define MSG_SOCK_INTR     -103 //读取过程被中断
+#define MSG_HEAD_INVALID  -104 //报文头无效
+#define MSG_BUFF_ENOMEM   -105 //内存不足
+
+int msglink_send(int so, const unsigned char *buff, size_t data_len, int *send_len, char *szmsg)
+{
+   *send_len = 0;
+   if(NULL!=szmsg) *szmsg='\0';
+   if(data_len<=0) return 0;
+
+   int rc=0;
+   int count = 0;//发送计数
+   int retry_count = 0;//重试次数
+	for(;;)
+	{
+		rc = send(so, buff+count, data_len-count, 0);
+		if(0==rc)
+		{
+
+		}
+		if(rc < 0)
+		{
+			int err_code=errno;
+		    // 当send收到信号时,可以继续写
+		   if(err_code == EINTR)//
+		        continue;
+		    // 当socket是非阻塞时,如返回此错误,表示写缓冲队列已满,
+		    // 在这里做延时后再重试.
+		   else if(err_code == EAGAIN)
+		    {
+		       ++retry_count;
+		       if(retry_count>3)//重试超过次数,则退出
+		           break;
+		       usleep(1000);
+		       continue;
+		    }
+		   if(NULL!=szmsg)
+			   sprintf(szmsg, "msglink_send failed! errno=[%d], strerr=[%s]", err_code, strerror(err_code));
+		   return err_code;
+		}
+
+		count += rc;
+	}
+
+	return 0;
+}
+
+
+int msglink_recv(int so, unsigned char *buff, size_t buffsize, int *recv_len, char *szmsg)
+{
+	*recv_len = 0;
+	int err_code=0;
+	if(NULL!=szmsg) *szmsg='\0';
+
+	ST_MSG_HEAD msg_head;
+	memset(&msg_head, 0, sizeof(ST_MSG_HEAD));
+	//peek报文头
+	int rc=0;
+	for(;;)
+	{
+		rc=recv(so, &msg_head, sizeof(ST_MSG_HEAD), MSG_PEEK|MSG_DONTWAIT);
+		if(0==rc)//socket在读取过程中连接关闭
+		{
+			return MSG_SOCK_CLOSE;
+		}
+		else if(rc<0)
+		{
+			err_code = errno;
+			if((EAGAIN==err_code) || (EWOULDBLOCK==err_code))//没有数据
+			{
+				return 0;
+			}
+			else if(EINTR==err_code)//被中断,下次读取吧
+			{
+				continue;//继续读取
+			}
+			else //其他错误
+			{
+				if(NULL!=szmsg)
+				{
+					sprintf(szmsg, "peek报文头失败!未知错误,errno=[%d], strerr=[%s]", err_code, strerror(err_code));
+				}
+				return err_code;
+			}
+		}
+	}//enf of for
+
+	//校验报文头
+	int data_size = msg_head.data_len + sizeof(msg_head);//数据总长度
+	int count = 0; //已接收数据长度
+	if(data_size>buffsize)
+	{
+		if(NULL!=szmsg) strcpy(szmsg, "缓存不足");
+		return MSG_BUFF_ENOMEM;
+	}
+
+	while(count<data_size)
+	{
+	    /*
+	     * 默认socket的recv是阻塞的; 无论阻塞与非阻塞,rc<0表示失败; =0连接关闭; >0-收到数据;
+	     *     当数据没有到达,默认情况下(阻塞模式)recv会等待数据到达;
+	     * 注意: rc<0 &&((errno==EINTR)||(errno==EWOULDBLOCK)||(errno==EAGAIN)) 认为是正常的,继续接收数据
+	     *   当非阻塞模式下,如果socket没有可用数据,则返回-1,并将errno设置为EAGAIN或EWOULDBLOCK
+	     **/
+	   rc=recv(so, buff+count, data_size-count,0);
+	   if(0==rc)//连接关闭
+	    {
+		   return MSG_SOCK_CLOSE;
+	    }
+	   else if(rc<0)
+	    {
+		   err_code = errno;
+	        //非阻塞的模式,所以当errno为EAGAIN时,表示当前缓冲区已无数据可读
+	      if( (err_code==EAGAIN) || (EWOULDBLOCK==err_code) ) //socket被标记为非阻塞,接收被阻塞或超时,没有数据
+	         break;
+	      else if(EINTR==err_code)//在收到数据前,被信号中断
+	         continue;
+	      if(NULL!=szmsg)
+	     		sprintf(szmsg, "报文接收错误,errno=[%d], strerr=[%s]", err_code, strerror(err_code));
+	      return err_code;
+	    }
+
+	   count +=rc;
+	   *recv_len = count;
+	}
+
+	return 0;
+}
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //构造函数
