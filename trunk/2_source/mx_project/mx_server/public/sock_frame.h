@@ -27,19 +27,19 @@
 //定义报文头
 typedef struct __st_sock_frame_head
 {
-    unsigned int frame_len;//!< 报文长度
-    char frame_version[8];//!< 协议版本
-    unsigned int  serial_no;//!< 报文序号
+    unsigned int  frame_len;        //!< 报文长度
+    unsigned int  serial_no;        //!< 报文序号
+    char          frame_version[8]; //!< 协议版本
     unsigned char bit_flag[4];//
     unsigned char head_end_flag[4];
-    unsigned int crc;
+    unsigned int  crc;
 }ST_SOCK_FRAME_HEAD;
 
 //定义报文格式:报文头+数据
 typedef struct __st_sock_frame
 {
     ST_SOCK_FRAME_HEAD frame_head;
-    unsigned char frame_data[MAX_FRAME_SIZE-sizeof(ST_SOCK_FRAME_HEAD)];//!< 数据指针
+    unsigned char      frame_data[MAX_FRAME_SIZE-sizeof(ST_SOCK_FRAME_HEAD)];//!< 数据指针
 }ST_SOCK_FRAME;
 
 //@brief 校验报文头释放有效
