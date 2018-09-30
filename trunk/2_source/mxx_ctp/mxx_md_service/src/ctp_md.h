@@ -6,6 +6,22 @@
 
 #include "ThostFtdcMdApi.h"
 
+#define REQ_SS_SEND     's'  //!<正在申请
+#define REQ_SS_ONRSPING ''   //!<正在应答
+#define REQ_SS_FINISH   'a'  //!<应答完成
+#define REQ_SS_REFUSE   'q'  //!<ctp拒绝或错误
+
+
+//每次请求需要记录请求信息,为了在OnRspXXX中找到对应的请求
+struct __ctp_node
+{
+    int nRequestID;         //!<请求id
+    char req_session_status;//!<请求状态
+    
+    char error_code; //!<错误码
+    char msg[80];    //!<错误消息
+};
+
 class CCtpMdSpi: public CThostFtdcMdSpi
 {
   public:
@@ -63,7 +79,7 @@ class CCtpMdSpi: public CThostFtdcMdSpi
 #define CTP_SS_RUNNING    '4'  //正在运行
 #define CTP_SS_LOGOUTING  '5'  //登出中
 
-class CCtpMdConnection
+class CCtpMdConnection : CThostFtdcMdApi
 {
   public:
     CCtpMdConnection();
@@ -110,7 +126,7 @@ class CCtpMdConnection
     //自动重连
     bool m_bAutoReconn;//true-断开后自动重连;
     char            m_ctp_status;//ctp连接状态
-    CThostFtdcMdApi *m_pMdApi;//API请求接口
+    //CThostFtdcMdApi *m_pMdApi;//API请求接口
     CCtpMdSpi       *m_pMdSpi;      //SPI应答处理接口
     
   private:
