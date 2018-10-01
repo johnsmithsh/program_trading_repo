@@ -44,10 +44,6 @@ TEST(os_time, tm_to_os_date_time)
    memset(&os_time, 0, sizeof(os_time));
    os_get_time(&os_time);
    printf("os_get_time: %02d:%02d:%02d.%03d_%d\n", os_time.hour, os_time.minute, os_time.second, os_time.millisecond, os_time.macroseconds);
-
-   
-   
-
    
 }
 

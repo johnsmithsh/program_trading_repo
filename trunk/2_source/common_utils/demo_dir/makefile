@@ -49,11 +49,11 @@ unittest_TARGETS= unittest_ipc_shm \
                 unittest_mxx_bin_pack \
                 unittest_thread_base unittest_os_math unittest_os_time unittest_os_path \
                 unittest_posix_sem unittest_pthread_cond \
-                unittest_rtti
+                unittest_rtti unittest_mxxmem
 unittest_SOURCES:= ./unittest_ipc_shm.cpp ./unittest_mxx_bin_pack.cpp ./unittest_thread_base.cpp \
                   ./unittest_os_math.cpp ../os_math.cpp ./unittest_os_time.cpp ./unittest_os_path.cpp \
                   ./unittest_posix_sem.cpp ./unittest_pthread_cond.cpp \
-                  ./unittest_rtti.cpp
+                  ./unittest_rtti.cpp ./unittest_mxxmem.cpp
 unittest_OBJS=$(unittest_SOURCES:.cpp=.o)
 
 ifdef unittest_FLAG
@@ -94,7 +94,8 @@ unittest_ipc_shm: ../concurrency/ipc_shm.o unittest_ipc_shm.o
 	$(GCC) -o $@ $(LIB_DIR) $(SO_LIBS)  $^   $(gtest_libs)
 unittest_rtti: ./unittest_rtti.o ../rtti_proto/rtti_field_descriptor.o
 	$(GCC) -o $@ $(LIB_DIR) $(SO_LIBS)  $^   $(gtest_libs)
-
+unittest_mxxmem: ./unittest_mxxmem.o 
+	$(GCC) -o $@ $(LIB_DIR) $(SO_LIBS)  $^   $(gtest_libs)
 #$@表示目标; $^表示所有依赖文件; $<表示第一个依赖文件
 #模式规则: 
 # 模式规则中，至少在规则的目标定义中要包含"%"，否则，就是一般的规则。
