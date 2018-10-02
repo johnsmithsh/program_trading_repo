@@ -135,7 +135,7 @@ inline int mxx_varmem_insert(mxx_varmem_t *mem_ptr, uint32_t startpos, unsigned 
         return 0;
     if(mxx_varmem_availsize(mem_ptr)<data_len)//!<缓存长度不足
         return -1;
-    if(startpos>mxx_varmem_datalen(mem_ptr))
+    if(startpos>mxx_varmem_datalen(mem_ptr))//可以==,等同于追加
         startpos = mxx_varmem_datalen(mem_ptr);
     //后面所有元素后移动
     unsigned char *src=mxx_varmem_address(mem_ptr)+mxx_varmem_datalen(mem_ptr)-1;
@@ -143,13 +143,6 @@ inline int mxx_varmem_insert(mxx_varmem_t *mem_ptr, uint32_t startpos, unsigned 
     int count = mxx_varmem_datalen(mem_ptr) - startpos;
     while(count-->0)
         *dst-- = *src--;
-    //unsigned char *data_address=mxx_varmem_address(mem_ptr)+startpos;
-    //unsigned char *ptr=data_ptr + mem_ptr->membuff.length;
-    //for(int index = mem_ptr->membuff.length-1; index>=startpos; --index)
-    //{
-    //    *(ptr+data_len) = *(data_address+index);
-    //    --ptr;
-    //}
 
     //插入内容
     dst=mxx_varmem_address(mem_ptr)+startpos;
@@ -162,50 +155,66 @@ inline int mxx_varmem_insert(mxx_varmem_t *mem_ptr, uint32_t startpos, unsigned 
 }
 
 //@brief 填充数据
-inline int mxx_varmem_fill(mxx_varmem_t *mem_ptr, unsigned char ch, size_t len, uint32_t startpos=0)
+inline int mxx_varmem_fill(mxx_varmem_t *mem_ptr, uint32_t startpos, unsigned char ch,  size_t len)
 {
+    if(len<=0)
+        return -1;
+    //起始位置必须在0~data_len之间,否则从数据结尾开始填充
+    if(startpos>mxx_varmem_datalen(mem_ptr))
+        startpos = mxx_varmem_datalen(mem_ptr);
+    //填充个数不能超出缓存区大小
     if(startpos+len>mxx_varmem_buffsize(mem_ptr))
         len = mxx_varmem_buffsize(mem_ptr) - startpos;
     memset(mem_ptr->membuff.databuff+startpos, ch, len);
 
-    if(len+startpos>mxx_varmem_datalen(mem_ptr))
-            mem_ptr->membuff.length = len+startpos;
+    if(startpos+len>mxx_varmem_datalen(mem_ptr))
+        mem_ptr->membuff.length = startpos+len;
     return  mem_ptr->membuff.length;
 }
 
 //@brief 删除数据
-inline mxx_varmem_t *mxx_varmem_erase(mxx_varmem_t *mem_ptr, uint32_t startpos=0, size_t len=0)
+inline mxx_varmem_t *mxx_varmem_erase(mxx_varmem_t *mem_ptr, uint32_t startpos, size_t len)
 {
-    if(mem_ptr->membuff.length-startpos<len)
-        len = mem_ptr->membuff.length-startpos;
+    //起始位置在0~length-1之外,则不需要处理
+    if(startpos>=mxx_varmem_datalen(mem_ptr))
+        return mem_ptr;
+    
+    //必须保证startpos~startpos+len,在0~length之间
+    if(mxx_varmem_datalen(mem_ptr)-startpos<len)
+        len = mxx_varmem_datalen(mem_ptr)-startpos;
+    if(len<=0)
+        return mem_ptr;
+    
     //后面元素前移
-    unsigned char *data_address=mxx_varmem_address(mem_ptr);
-    unsigned char *dst=data_address + startpos;
-    int count=0;
-    for(int index = startpos + len; (count<len)&&(index<mem_ptr->membuff.length); ++index)
-    {
-        *dst = *(data_address+index);
-        ++dst;
-        ++count;
-    }
+    unsigned char *begin=mxx_varmem_address(mem_ptr);
+    unsigned char *src  =begin + startpos+len;
+    unsigned char *dst  =begin + startpos;
+    int          count  =mxx_varmem_datalen(mem_ptr) - startpos-len;
+    if(count>0)//<=0说明从起始位置删除到尾部
+        memmove(dst, src, count);
 
-    mem_ptr->membuff.length -= len;
-    *(data_address+mem_ptr->membuff.length) = 0;
+    mem_ptr->membuff.length -= len;//!<长度发生变化
+    *(begin+mem_ptr->membuff.length) = 0;
 
     return mem_ptr;
 }
 
 //@brief 替换数据
-inline int mxx_varmem_replace(mxx_varmem_t *mem_ptr, unsigned char *data_ptr, size_t data_len, uint32_t startpos=0)
+inline int mxx_varmem_replace(mxx_varmem_t *mem_ptr, uint32_t startpos, unsigned char *data_ptr, size_t data_len)
 {
+    if((NULL==data_ptr)||(data_len<=0))
+        return -1;
+    //起始位置在0~length-1之外,则不需要处理
     if(startpos>=mxx_varmem_datalen(mem_ptr))
-        return 0;
-
+        return -1;
+    
+    //替换长度不能大于缓存
     if(startpos+data_len>mxx_varmem_buffsize(mem_ptr))
         data_len = mxx_varmem_buffsize(mem_ptr) - startpos;
     memcpy(mem_ptr->membuff.databuff+startpos, data_ptr, data_len);
 
-    if(data_len+startpos>mxx_varmem_datalen(mem_ptr))
+    //可能影响数据长度
+    if(startpos+data_len>mxx_varmem_datalen(mem_ptr))
         mem_ptr->membuff.length = data_len+startpos;
 
     return  mem_ptr->membuff.length;
