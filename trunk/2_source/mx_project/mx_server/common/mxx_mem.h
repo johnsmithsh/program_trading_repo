@@ -100,41 +100,90 @@ inline size_t mxx_varmem_datalen(mxx_varmem_t *mem_ptr)
     return mem_ptr->membuff.length;
 }
 
-//@brief 设置数据
+#define EVARMEM_OutOfMemory  -101 //缓存溢出
+/* 
+ * @brief 从头开始写数据
+ * @param
+ *   [in]mem_ptr:
+ *   [in]data_ptr,data_len: 写入数据的指针和长度;
+ * @retVal 返回写入字节数; <0-失败; 
+ *   错误码: EVARMEM_OutOfMemory
+*/
 inline int mxx_varmem_assign(mxx_varmem_t *mem_ptr, unsigned char *data_ptr, size_t data_len)
 {
     if((data_len<=0)||(NULL==data_ptr))
         return 0;
-    if(data_len>mem_ptr->size)
-        return -1;
+    if(data_len>=mxx_varmem_availsize(mem_ptr))//!<缓存长度不足
+        return EVARMEM_OutOfMemory;
     
     unsigned char *data_address=mxx_varmem_address(mem_ptr);
     memcpy(data_address, data_ptr, data_len);
     mem_ptr->membuff.length = data_len;
-    return 0;
+    return mem_ptr->membuff.length;
 }
 
-//@brief 追加数据; 0-成功; <0-失败;
+/*
+ * @brief 在指定的位置写入数据; startpos范围[0,buffsize-1];
+ * @param
+ *   [in]mem_ptr:
+ *   [in]startpos: 范围[0, buffsize-1]
+ *   [in]data_ptr,data_len: 写入数据的指针和长度;
+ * @retVal 返回写入字节数; <0-失败; 
+ *   错误码:EVARMEM_OutOfMemory
+*/
+inline int mxx_varmem_write(mxx_varmem_t *mem_ptr, uint32_t startpos, unsigned char *data_ptr, size_t data_len)
+{
+    if((NULL==data_ptr)||(data_len<=0)) 
+        return 0;
+    if(startpos>=mxx_varmem_availsize(mem_ptr))//!<缓存长度不足
+        return EVARMEM_OutOfMemory;
+    if(startpos+data_len>mxx_varmem_availsize(mem_ptr))//可以==
+        data_len = mxx_varmem_availsize(mem_ptr) - startpos;//!< size_t一定大于0,故必须判断buffsize>startpos;
+    if(data_len<=0)
+        return 0;
+    
+    //拷贝数据
+    unsigned char *dst=mxx_varmem_address(mem_ptr)+startpos;
+    memcpy(dst, data_ptr, data_len);
+
+    mem_ptr->membuff.length += data_len;
+
+    return data_len;
+}
+
+/*
+ * @brief 追加数据; 0-成功; <0-失败;
+ * @param
+ *    [in]mem_ptr:
+ *    [in]data_ptr,data_len: 写入数据的指针和长度;
+ * @retVal 返回写入字节数; <0-失败; 
+ *   错误码:EVARMEM_OutOfMemory
+ */
 inline int mxx_varmem_append(mxx_varmem_t *mem_ptr, unsigned char *data_ptr, size_t data_len)
 {
     if((NULL==data_ptr)||(data_len<=0)) 
         return 0;
 
     if(mxx_varmem_availsize(mem_ptr)<data_len)//!<缓存长度不足
-        return -1;
+        return EVARMEM_OutOfMemory;
     memcpy(mem_ptr->membuff.databuff+mem_ptr->membuff.length, data_ptr, data_len);
     mem_ptr->membuff.length += data_len;
-    return 0;
+    return data_len;
 }
 
-//@brief 插入数据; startpos从0开始; 如果指定位置在最后位置之后,则变为追加;
-//@retVal: 0-成功; <0-失败;
+/*
+ * @brief 插入数据; startpos从0开始; 如果指定位置在最后位置之后,则变为追加;
+ *   [in]startpos: 范围[0, length-1];>=length,则从length追加
+ *   [in]data_ptr,data_len: 写入数据的指针和长度;
+ * @retVal
+ *  返回字节数; <0-失败;
+ */
 inline int mxx_varmem_insert(mxx_varmem_t *mem_ptr, uint32_t startpos, unsigned char *data_ptr, size_t data_len)
 {
     if((NULL==data_ptr)||(data_len<=0)) 
         return 0;
     if(mxx_varmem_availsize(mem_ptr)<data_len)//!<缓存长度不足
-        return -1;
+        return EVARMEM_OutOfMemory;
     if(startpos>mxx_varmem_datalen(mem_ptr))//可以==,等同于追加
         startpos = mxx_varmem_datalen(mem_ptr);
     //后面所有元素后移动
@@ -151,14 +200,22 @@ inline int mxx_varmem_insert(mxx_varmem_t *mem_ptr, uint32_t startpos, unsigned 
     mem_ptr->membuff.length += data_len;
     //*(data_ptr+mem_ptr->membuff.length) = 0;
 
-    return 0;
+    return data_len;
 }
 
-//@brief 填充数据
+/* 
+ * @brief 填充数据
+ * @param
+ *   [in]mem_ptr
+ *   [in]startpos: 范围[0, length-1];>=length,则从length开始填充
+ *   [in]ch,data_len: 写入数据的指针和长度;
+ * @retVal
+ *  返回字节数; <0-失败;
+ */
 inline int mxx_varmem_fill(mxx_varmem_t *mem_ptr, uint32_t startpos, unsigned char ch,  size_t len)
 {
     if(len<=0)
-        return -1;
+        return 0;//return -1;
     //起始位置必须在0~data_len之间,否则从数据结尾开始填充
     if(startpos>mxx_varmem_datalen(mem_ptr))
         startpos = mxx_varmem_datalen(mem_ptr);
@@ -169,10 +226,15 @@ inline int mxx_varmem_fill(mxx_varmem_t *mem_ptr, uint32_t startpos, unsigned ch
 
     if(startpos+len>mxx_varmem_datalen(mem_ptr))
         mem_ptr->membuff.length = startpos+len;
-    return  mem_ptr->membuff.length;
+    return len;//return  mem_ptr->membuff.length;
 }
 
-//@brief 删除数据
+/*
+ * @brief 删除数据
+ * @param
+ *   [in]startpos: 范围[0, length-1];>=length,不删除数据;
+ *   [in]data_len: 删除数据长度;
+ */
 inline mxx_varmem_t *mxx_varmem_erase(mxx_varmem_t *mem_ptr, uint32_t startpos, size_t len)
 {
     //起始位置在0~length-1之外,则不需要处理
@@ -199,14 +261,21 @@ inline mxx_varmem_t *mxx_varmem_erase(mxx_varmem_t *mem_ptr, uint32_t startpos, 
     return mem_ptr;
 }
 
-//@brief 替换数据
+/*
+ * @brief 替换数据
+ * @param
+ *   [in]startpos: 范围[0, length-1];>=length,不做处理;
+ *   [in]data_ptr,data_len: 删除数据长度;
+ * @retVal
+ *   返回替换的字节数;
+ */
 inline int mxx_varmem_replace(mxx_varmem_t *mem_ptr, uint32_t startpos, unsigned char *data_ptr, size_t data_len)
 {
     if((NULL==data_ptr)||(data_len<=0))
-        return -1;
+        return 0;//return -1;
     //起始位置在0~length-1之外,则不需要处理
     if(startpos>=mxx_varmem_datalen(mem_ptr))
-        return -1;
+        return 0;//return -1;
     
     //替换长度不能大于缓存
     if(startpos+data_len>mxx_varmem_buffsize(mem_ptr))
@@ -217,7 +286,7 @@ inline int mxx_varmem_replace(mxx_varmem_t *mem_ptr, uint32_t startpos, unsigned
     if(startpos+data_len>mxx_varmem_datalen(mem_ptr))
         mem_ptr->membuff.length = data_len+startpos;
 
-    return  mem_ptr->membuff.length;
+    return data_len;//return  mem_ptr->membuff.length;
 }
 
 //@brief 跳过指定长度; 返回数据长度
