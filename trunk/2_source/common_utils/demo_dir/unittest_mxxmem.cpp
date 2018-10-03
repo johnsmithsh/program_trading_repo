@@ -49,9 +49,10 @@ TEST(mxx_varmem, assign)
    ASSERT_TRUE(64==mem_ptr->size);
    
    char buff[64]="hello";
+   int len = strlen(buff);
    rc=mxx_varmem_assign(mem_ptr, NULL, strlen(buff));
    EXPECT_EQ(64,  mem_ptr->size);
-   EXPECT_EQ(0,        rc);
+   EXPECT_EQ(0,      rc);
    EXPECT_EQ(0,        mem_ptr->membuff.length);
    EXPECT_EQ('\0',     mem_ptr->membuff.databuff[0]);
    
@@ -61,26 +62,27 @@ TEST(mxx_varmem, assign)
    EXPECT_EQ(0,        mem_ptr->membuff.length);
    EXPECT_EQ('\0',     mem_ptr->membuff.databuff[0]);
    
+   len=strlen(buff);
    rc=mxx_varmem_assign(mem_ptr, (unsigned char *)buff, strlen(buff));
    EXPECT_EQ(64,  mem_ptr->size);
-   EXPECT_EQ(0,        rc);
+   EXPECT_EQ(len,        rc);
    EXPECT_EQ(strlen(buff),        mem_ptr->membuff.length);
-   EXPECT_TRUE(0==strcmp(buff,     (char *)mem_ptr->membuff.databuff));
+   EXPECT_TRUE(0==memcmp(buff,     (char *)mem_ptr->membuff.databuff, len));
    
-   int len=0;
+   len=0;
    strcpy(buff, "world");
    len=3;
    rc=mxx_varmem_assign(mem_ptr, (unsigned char *)buff, len);
    EXPECT_EQ(sizeof(buff),  mem_ptr->size);
-   EXPECT_EQ(0,        rc);
+   EXPECT_EQ(len,        rc);
    EXPECT_EQ(len,        mem_ptr->membuff.length);
-   EXPECT_TRUE(0==strncmp(buff,     (char *)mem_ptr->membuff.databuff, len));
+   EXPECT_TRUE(0==memcmp(buff,     (char *)mem_ptr->membuff.databuff, len));
    
    strcpy(buff, "howareyou");
    len=7;
    rc=mxx_varmem_assign(mem_ptr, (unsigned char *)buff, len);
    EXPECT_EQ(sizeof(buff),  mem_ptr->size);
-   EXPECT_EQ(0,        rc);
+   EXPECT_EQ(len,        rc);
    EXPECT_EQ(len,        mem_ptr->membuff.length);
    EXPECT_TRUE(0==strncmp(buff,     (char *)mem_ptr->membuff.databuff, len));
    
@@ -88,7 +90,7 @@ TEST(mxx_varmem, assign)
    memset(buff2, 'a', sizeof(buff2)-1);
    len = sizeof(buff2);
    rc=mxx_varmem_assign(mem_ptr, (unsigned char *)buff2, len);
-   EXPECT_EQ(-1,  rc);
+   EXPECT_EQ(EVARMEM_OutOfMemory,  rc);
    
    mxx_varmem_destroy(mem_ptr);
 }
@@ -106,7 +108,7 @@ TEST(mxx_varmem, clear)
    len = strlen(buff);
    rc=mxx_varmem_assign(mem_ptr, (unsigned char *)buff, len);
    EXPECT_EQ(buffsize,  mem_ptr->size);
-   EXPECT_EQ(0,         rc);
+   EXPECT_EQ(len,         rc);
    EXPECT_EQ(len,       mem_ptr->membuff.length);
    EXPECT_TRUE(0==strncmp(buff,     (char *)mem_ptr->membuff.databuff, len));
    

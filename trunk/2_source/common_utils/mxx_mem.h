@@ -100,18 +100,55 @@ inline size_t mxx_varmem_datalen(mxx_varmem_t *mem_ptr)
     return mem_ptr->membuff.length;
 }
 
-//@brief 设置数据
+#define EVARMEM_OutOfMemory  -101 //缓存溢出
+/* 
+ * @brief 从头开始写数据
+ * @param
+ *   [in]mem_ptr:
+ *   [in]data_ptr,data_len: 写入数据的指针和长度;
+ * @retVal 返回写入字节数; <0-失败; 
+ *   错误码: EVARMEM_OutOfMemory
+*/
 inline int mxx_varmem_assign(mxx_varmem_t *mem_ptr, unsigned char *data_ptr, size_t data_len)
 {
     if((data_len<=0)||(NULL==data_ptr))
         return 0;
-    if(data_len>mem_ptr->size)
-        return -1;
+    if(data_len>=mxx_varmem_availsize(mem_ptr))//!<缓存长度不足
+        return EVARMEM_OutOfMemory;
     
     unsigned char *data_address=mxx_varmem_address(mem_ptr);
     memcpy(data_address, data_ptr, data_len);
     mem_ptr->membuff.length = data_len;
-    return 0;
+    return mem_ptr->membuff.length;
+}
+
+/*
+ * @brief 在指定的位置写入数据; startpos范围[0,buffsize-1];
+ * @param
+ *   [in]mem_ptr:
+ *   [in]startpos: 范围[0, buffsize-1]
+ *   [in]data_ptr,data_len: 写入数据的指针和长度;
+ * @retVal 返回写入字节数; <0-失败; 
+ *   错误码:EVARMEM_OutOfMemory
+*/
+inline int mxx_varmem_write(mxx_varmem_t *mem_ptr, uint32_t startpos, unsigned char *data_ptr, size_t data_len)
+{
+    if((NULL==data_ptr)||(data_len<=0)) 
+        return 0;
+    if(startpos>=mxx_varmem_availsize(mem_ptr))//!<缓存长度不足
+        return EVARMEM_OutOfMemory;
+    if(startpos+data_len>mxx_varmem_availsize(mem_ptr))//可以==
+        data_len = mxx_varmem_availsize(mem_ptr) - startpos;//!< size_t一定大于0,故必须判断buffsize>startpos;
+    if(data_len<=0)
+        return 0;
+    
+    //拷贝数据
+    unsigned char *dst=mxx_varmem_address(mem_ptr)+startpos;
+    memcpy(dst, data_ptr, data_len);
+
+    mem_ptr->membuff.length += data_len;
+
+    return data_len;
 }
 
 //@brief 追加数据; 0-成功; <0-失败;
