@@ -70,6 +70,8 @@ inline void mxx_varmem_clear(mxx_varmem_t *mem_ptr)
     memset(mem_ptr->membuff.databuff, 0, mem_ptr->size);
 }
 
+#define mxx_varmem_truncate(mem_ptr) mxx_varmem_clear(mem_ptr)
+
 //@brief 获取缓存地址
 inline unsigned char *mxx_varmem_address(mxx_varmem_t *mem_ptr)
 {
@@ -265,7 +267,7 @@ inline mxx_varmem_t *mxx_varmem_erase(mxx_varmem_t *mem_ptr, uint32_t startpos, 
  * @brief 替换数据
  * @param
  *   [in]startpos: 范围[0, length-1];>=length,不做处理;
- *   [in]data_ptr,data_len: 删除数据长度;
+ *   [in]data_ptr,data_len: 替换数据长度;
  * @retVal
  *   返回替换的字节数;
  */
@@ -289,13 +291,22 @@ inline int mxx_varmem_replace(mxx_varmem_t *mem_ptr, uint32_t startpos, unsigned
     return data_len;//return  mem_ptr->membuff.length;
 }
 
-//@brief 跳过指定长度; 返回数据长度
+/*
+ * @brief 跳过指定长度; 返回数据长度
+ * @param
+ *   [in]startpos: 范围[0, length-1];>=length,不做处理;
+ *   [in]data_ptr,data_len: 替换数据长度;
+ * @retVal
+ *   返回替换的字节数;
+ */
 inline int mxx_varmem_skip(mxx_varmem_t *mem_ptr, size_t len)
 {
+    if(len<=0)
+        return 0;
+    if(mem_ptr->membuff.length+len>mem_ptr->size)
+        len = mem_ptr->size - mem_ptr->membuff.length;
     mem_ptr->membuff.length += len;
-    if(mem_ptr->membuff.length>mem_ptr->size)
-        mem_ptr->membuff.length = mem_ptr->size;
-    return mem_ptr->membuff.length;
+    return len;
 }
 
 #endif
