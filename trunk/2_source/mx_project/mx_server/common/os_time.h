@@ -24,6 +24,18 @@ inline void os_lapsetime(struct timespec *ts)
 	//return *ts;
 }
 
+inline void os_gettimeofday(struct timespec *ts)
+{
+	struct timeval tv;
+	tv.tv_sec  = 0;
+	tv.tv_usec = 0;
+	gettimeofday(&tv, 0);
+
+	ts->tv_sec = tv.tv_sec;
+	tv.tv_usec = tv.tv_usec * 1000;
+	return;
+}
+
 /**
  * @brief 计算两个时间差, 单位微秒; 
  * 

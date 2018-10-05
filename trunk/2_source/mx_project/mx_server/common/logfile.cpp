@@ -98,7 +98,7 @@ int mxx_log_level()
 }
 
 //功能: 输出日志
-bool mxx_log_msg(int level, char *msg_fmt,...)
+bool mxx_log_msg(int level, const char *msg_fmt,...)
 {
     CLogFileManage *logfile=CLogFileManage::GetInstance();
 	if(NULL==logfile) return false;

@@ -104,7 +104,7 @@ int msglink_recv(int so, unsigned char *buff, size_t buffsize, int *recv_len, ch
 	//校验报文头
 	int data_size = msg_head.data_len + sizeof(msg_head);//数据总长度
 	int count = 0; //已接收数据长度
-	if(data_size>buffsize)
+	if(data_size>(int)buffsize)
 	{
 		if(NULL!=szmsg) strcpy(szmsg, "缓存不足");
 		return MSG_BUFF_ENOMEM;
@@ -260,6 +260,8 @@ int CBuLinkThread::clear_sockinfo()
     mxx_socket_delete(m_sock_fd);
 	m_sock_fd=-1;
 	m_link_stat=LNK_STAT_NONE_SERVICE;
+
+	return 0;
 }
 
 int CBuLinkThread::bind_to_socket(int so)

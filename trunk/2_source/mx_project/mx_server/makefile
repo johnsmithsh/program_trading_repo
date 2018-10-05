@@ -51,9 +51,9 @@ COMMON_SOURCES:= common/os_path.cpp common/ConfigFile.cpp \
                  $(LOG_SRCS)
 COMMON_OBJS:= $(COMMON_SOURCES:.cpp=.o)
 
-PRJ_SRC=src/main.cpp src/thread_heartbeat.cpp src/servermanage.cpp src/thread_recv.cpp \
+PRJ_SRC=src/taskinfo.cpp src/main.cpp src/thread_heartbeat.cpp src/servermanage.cpp src/thread_recv.cpp \
         src/bufuncinfo.cpp src/bugroupinfo.cpp src/bufuncmanage.cpp \
-		src/thread_bulink.cpp
+		src/thread_bulink.cpp 
 PRJ_OBJS=$(PRJ_SRC:.cpp=.o)
 
 SOURCES:=$(COMMON_SOURCES) $(AUTO_SOURCES)

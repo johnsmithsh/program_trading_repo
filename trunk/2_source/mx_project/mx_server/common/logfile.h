@@ -50,11 +50,11 @@ bool mxx_log_destroy();
 int mxx_log_level();
 
 //功能: 输出格式化日志
-bool mxx_log_msg(int level, char *msg_fmt,...);
-bool mxx_log_msg_debug(char *msg_fmt,...);
-bool mxx_log_msg_warn(char *msg_fmt,...);
-bool mxx_log_msg_error(char *msg_fmt,...);
-bool mxx_log_msg_fatal(char *msg_fmt,...);
+bool mxx_log_msg(int level, const char *msg_fmt,...);
+bool mxx_log_msg_debug(const char *msg_fmt,...);
+bool mxx_log_msg_warn(const char *msg_fmt,...);
+bool mxx_log_msg_error(const char *msg_fmt,...);
+bool mxx_log_msg_fatal(const char *msg_fmt,...);
 
 #ifdef __cplusplus
 }

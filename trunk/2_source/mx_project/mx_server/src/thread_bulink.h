@@ -139,7 +139,7 @@ class CBuLinkThread : public Thread_Base
 	 
 	 ST_BUTHREAD_STATIC m_static;//!< 统计时间
    private:
-     std::deque<CTaskInfo> m_req_que;//!< 任务请求列表
+     std::deque<CTaskSession *> m_req_que;//!< 任务请求列表
 	 
 };
 
