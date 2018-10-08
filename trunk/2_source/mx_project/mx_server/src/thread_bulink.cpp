@@ -236,6 +236,31 @@ int CBuLinkThread::clear_buinfo()
 	return 0;
 }
 
+int CBuLinkThread::send_request_to_bu(CTaskSession * task_session/*=NULL*/)
+{
+	if(NULL==task_session)          return -1;
+	if(LNK_STAT_READY!=m_link_stat) return -2;
+
+	m_link_stat = LNK_STAT_HIGH_LOAD;
+
+	//todo 构建请求报文...
+	ST_MSGLINK_BUFF msg_link_buff;
+
+	//发送消息
+	char szMsg[256]={0};
+	int send_len = 0;
+	int data_len =msg_link_buff.head.data_len+sizeof(msg_link_buff.head);
+	int rc=msglink_send(m_sock_fd, (unsigned char *)&msg_link_buff, data_len, &send_len, szMsg);
+	if(rc<0)//发送错误
+	{
+	   //ERROR_MSG("msgid=[0x%02x], group_no=[%s], send response msg for connection failed!,rc=[%d]", head_ptr->msgid, info_ptr->group_no, conn_ptr->group_desc, rc);
+		m_link_stat = LNK_STAT_READY;
+		return -3;
+	}
+
+	return 0;
+
+}
 void CBuLinkThread::get_bulinkinfo(ST_SVR_LINK_HANDLE &bulinkinfo)
 {
 	memset(&bulinkinfo, 0, sizeof(ST_SVR_LINK_HANDLE));
@@ -362,7 +387,7 @@ int CBuLinkThread::service_routine()
 	      rc=wait_buregister();
 		  break;
 	  }
-	  case LNK_STAT_IDLE:      //!< 空闲
+	  case LNK_STAT_READY:      //!< 空闲
 	  case LNK_STAT_HIGH_LOAD: //!< 高负载
 	  {
 	     //处理业务消息
@@ -952,7 +977,7 @@ int CBuLinkThread::process_butransfer(ST_MSGLINK_BUFF * msg_buff_ptr)
 	
 	if(!msglink_check_ccflag((unsigned char *)msg_buff_ptr, CC_NEXT_FLAG))//当前业务已经处理完成,可以处理下一个业务
 	{
-	    m_link_stat=LNK_STAT_IDLE;//服务注册完毕,可以处理业务
+	    m_link_stat=LNK_STAT_READY;//服务注册完毕,可以处理业务
 	    return 0;
 	}
 	

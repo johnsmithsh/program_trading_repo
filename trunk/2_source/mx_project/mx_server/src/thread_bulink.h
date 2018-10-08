@@ -37,7 +37,7 @@
 #define LNK_STAT_NONE_SERVICE  1 //!< 线程空运行,没有业务连接; 如服务进程突然崩溃
 #define LNK_STAT_LINKING       2 //!< 连接中,一般注册信息
 #define LNK_STAT_REGISTERING   3 //!< 等待bu注册
-#define LNK_STAT_IDLE          4 //!< 服务空间,可以分配任务
+#define LNK_STAT_READY         4 //!< 服务空闲,可以分配任务
 #define LNK_STAT_HIGH_LOAD     5 //!< 高负载, 正忙着呢,不要烦我
 #define LNK_STAT_DISCONNING    6 //!< 正在关闭连接
 #define LNK_STAT_TERMINATE     7 //!< 已经关闭,有人要求我停止服务; 禁止关联业务服务
@@ -73,7 +73,10 @@ class CBuLinkThread : public Thread_Base
      //@brief (向该线程)分配任务;
 	 // 注: 处理业务数据就不适用回调函数了,处理结果放入到应答队列,调用者自取处理结果;
      int send_request_to_bu(unsigned char *data, size_t data_len);
+     int send_request_to_bu(CTaskSession * task_session=NULL);
    
+       //@返回业务链接状态
+     int get_link_stat() { return m_link_stat; }
    private:
     //接收例程; 处理来自业务进程的消息
     int service_routine();
@@ -107,7 +110,7 @@ class CBuLinkThread : public Thread_Base
 	//发送数据
 	int send_transferdata(){ return -1; }
    private://辅助函数
-       int check_msg_info(ST_MSGLINK_BUFF *msg_buff_ptr, unsigned short msgid);
+      int check_msg_info(ST_MSGLINK_BUFF *msg_buff_ptr, unsigned short msgid);
 	   int clear_buinfo();
 	   int clear_sockinfo();
    private:
@@ -138,6 +141,7 @@ class CBuLinkThread : public Thread_Base
     bool m_stop_flag;//!< 服务停止命令标记; HEARTBEAT_STOP_TRUE-收到停止命令, 服务需要退出; HEARTBEAT_STOP_FALSE-没有收到停止命令,服务可以继续运行;
 	 
 	 ST_BUTHREAD_STATIC m_static;//!< 统计时间
+
    private:
      std::deque<CTaskSession *> m_req_que;//!< 任务请求列表
 	 
