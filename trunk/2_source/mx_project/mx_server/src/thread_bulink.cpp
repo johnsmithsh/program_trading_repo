@@ -18,6 +18,7 @@
 #define MSG_HEAD_INVALID  -104 //报文头无效
 #define MSG_BUFF_ENOMEM   -105 //内存不足
 
+//@brief 发送数据; 要么发送一个完整数据包,要么返回错误; 发送半个数据包也返回错误
 int msglink_send(int so, const unsigned char *buff, size_t data_len, int *send_len, char *szmsg)
 {
    *send_len = 0;
@@ -61,7 +62,7 @@ int msglink_send(int so, const unsigned char *buff, size_t data_len, int *send_l
 	return 0;
 }
 
-
+//@brief 接收数据; 要么接收一个完整数据包,要么返回错误
 int msglink_recv(int so, unsigned char *buff, size_t buffsize, int *recv_len, char *szmsg)
 {
 	*recv_len = 0;
@@ -84,7 +85,7 @@ int msglink_recv(int so, unsigned char *buff, size_t buffsize, int *recv_len, ch
 			err_code = errno;
 			if((EAGAIN==err_code) || (EWOULDBLOCK==err_code))//没有数据
 			{
-				return 0;
+				return MSG_SOCK_NO_DATA;
 			}
 			else if(EINTR==err_code)//被中断,下次读取吧
 			{
@@ -247,19 +248,14 @@ int CBuLinkThread::send_request_to_bu(CTaskSession * task_session/*=NULL*/)
 	ST_MSGLINK_BUFF msg_link_buff;
 
 	//发送消息
-	char szMsg[256]={0};
-	int send_len = 0;
-	int data_len =msg_link_buff.head.data_len+sizeof(msg_link_buff.head);
-	int rc=msglink_send(m_sock_fd, (unsigned char *)&msg_link_buff, data_len, &send_len, szMsg);
-	if(rc<0)//发送错误
-	{
-	   //ERROR_MSG("msgid=[0x%02x], group_no=[%s], send response msg for connection failed!,rc=[%d]", head_ptr->msgid, info_ptr->group_no, conn_ptr->group_desc, rc);
-		m_link_stat = LNK_STAT_READY;
-		return -3;
-	}
+	int rc=send_msg(&msg_link_buff);
+	if(rc<0)
+		return rc;
+
+
+	m_req_que.push_back(task_session);
 
 	return 0;
-
 }
 void CBuLinkThread::get_bulinkinfo(ST_SVR_LINK_HANDLE &bulinkinfo)
 {
@@ -286,6 +282,57 @@ int CBuLinkThread::clear_sockinfo()
 	m_sock_fd=-1;
 	m_link_stat=LNK_STAT_NONE_SERVICE;
 
+	return 0;
+}
+
+int CBuLinkThread::recv_msg(ST_MSGLINK_BUFF *msg_buff)
+{
+	 if(NULL==msg_buff) return -1;
+    char szmsg[255]={0};
+    int data_len=0;
+    int rc=msglink_recv(m_sock_fd, (unsigned char *)msg_buff, sizeof(msg_buff), &data_len, szmsg);
+    if(rc<0)//接收错误
+    {
+    	ERROR_MSG("msglink_recv failed; [%d] [%s]", rc, szmsg);
+    	if(MSG_SOCK_CLOSE==rc)//接收过程中socket关闭
+    	{
+    		//todo 既然socket关闭了,那么该线程自动释放;数据直接丢弃
+    	}
+    	return -1;
+    }
+
+    if(data_len<(int)(sizeof(ST_MSG_HEAD)+msg_buff->head.data_len))
+    {
+    	ERROR_MSG("msglink_recv error; no entire msg package");
+    	return -2;
+    }
+
+	return 0;
+}
+
+int CBuLinkThread::send_msg(ST_MSGLINK_BUFF *msg_buff)
+{
+	if(NULL==msg_buff) return -1;
+	int sended_len=0;
+	int total_len = msg_buff->head.data_len+sizeof(ST_MSG_HEAD);
+	char szMsg[255]={0};
+	int rc=msglink_send(m_sock_fd, (unsigned char *)msg_buff, total_len, &sended_len, szMsg);
+
+	if(rc<0)//接收错误
+	{
+		ERROR_MSG("msglink_send failed; [%d] [%s]", rc, szMsg);
+		if(MSG_SOCK_CLOSE==rc)//接收过程中socket关闭
+	    {
+			//todo 既然socket关闭了,那么该线程自动释放;数据直接丢弃
+	    }
+	   return -1;
+	}
+
+	if(sended_len!=total_len)
+	{
+		ERROR_MSG("msglink_send error; 发送数据[%d]<[[%d]", sended_len, total_len);
+		return -2;
+	}
 	return 0;
 }
 
@@ -319,8 +366,8 @@ int CBuLinkThread::bind_to_socket(int so)
 	m_link_stat=LNK_STAT_LINKING;
 	m_sock_fd = so;
 	
-	this->start_thread();//!< 启动线程
-	return 0;
+	//this->start_thread();//!< 启动线程
+	//return 0;
 }
 
 int CBuLinkThread::service_routine() 
@@ -446,24 +493,29 @@ int CBuLinkThread::wait_buconn()
     char szmsg[255]={0};
     //接收消息,确认已经有消息过来了
     ST_MSGLINK_BUFF msg_buff;
-	int data_len=0;
-    int rc=msglink_recv(m_sock_fd, (unsigned char *)&msg_buff, sizeof(msg_buff), &data_len, szmsg);
-	if(rc<0)//接收错误
-	{
-	    return -1;
-	}
+	//int data_len=0;
+   //int rc=msglink_recv(m_sock_fd, (unsigned char *)&msg_buff, sizeof(msg_buff), &data_len, szmsg);
+	//if(rc<0)//接收错误
+	//{
+	//    return -1;
+	//}
+    //if(msglink_check_ccflag((unsigned char *)&msg_buff, CC_ACK_FLAG))//ACK标记,不用做后续处理
+     //{
+    // 	    return 0;
+     //}
+    int rc=recv_msg(&msg_buff);
+    if(rc<0)
+    	return -1;
 	
-	if(msglink_check_ccflag((unsigned char *)&msg_buff, CC_ACK_FLAG))//ACK标记,不用做后续处理
-	{
-	    return 0;
-	}
 	
+
 	//根据不同的消息类型做不同的处理
 	ST_MSG_HEAD   *head_ptr=&msg_buff.head;//报文头
 	ST_MSG_COMMON *info_ptr=&msg_buff.commoninfo;//msg消息头
 	if(MSGTYPE_CONN!=head_ptr->msgid)//必须连接请求报文
 	{
-	    return -1;
+		WARN_MSG("当前需要的是消息[0x%x]!=[0x%x]", MSGTYPE_CONN, head_ptr->msgid);
+	   return -1;
 	}
 	rc=process_bulink(&msg_buff);
 	return rc;
@@ -609,7 +661,7 @@ int CBuLinkThread::check_msg_info(ST_MSGLINK_BUFF *msg_buff_ptr, unsigned short 
 
 //@brief 连接请求: 控制中心处理业务进程发起连接请求;
 int CBuLinkThread::process_bulink(ST_MSGLINK_BUFF *msg_buff_ptr)
-{	
+{
 	int err_code=0;
 	char szmsg[255]={0};
 	int rc=0;
@@ -708,13 +760,17 @@ int CBuLinkThread::process_bulink(ST_MSGLINK_BUFF *msg_buff_ptr)
 	
 
 	//发送数据
-	rc=msglink_send(m_sock_fd, (unsigned char *)&msg_rsp_buff, msg_rsp_buff.head.data_len+sizeof(msg_rsp_buff.head), szmsg);
-	if(rc<0)//接收错误
+	//rc=msglink_send(m_sock_fd, (unsigned char *)&msg_rsp_buff, msg_rsp_buff.head.data_len+sizeof(msg_rsp_buff.head), szmsg);
+	//if(rc<0)//接收错误
+	//{
+	//    ERROR_MSG("msgid=[0x%02x], group_no=[%s], send response msg for connection failed!,rc=[%d]", head_ptr->msgid, info_ptr->group_no, conn_ptr->group_desc, rc);
+	//	return -1;
+	//}
+	rc=send_msg(&msg_rsp_buff);
+	if(rc<0)
 	{
-	    ERROR_MSG("msgid=[0x%02x], group_no=[%s], send response msg for connection failed!,rc=[%d]", head_ptr->msgid, info_ptr->group_no, conn_ptr->group_desc, rc);
-		return -1;
+		ERROR_MSG("连接应答发送失败,msgid=[0x%02x], group_no=[%s], groupdesc=[%s], send response msg for connection failed!,rc=[%d]", head_ptr->msgid, info_ptr->group_no, conn_ptr->group_desc, rc);
 	}
-	
 	m_link_stat=LNK_STAT_REGISTERING;//修改连接状态
 	return 0;
 }
@@ -766,11 +822,17 @@ int CBuLinkThread::process_disconn(ST_MSGLINK_BUFF *msg_buff_ptr)
 	//msglink_pkg_data_append((unsigned char *)&msg_rsp_buff, sizeof(msg_rsp_buff), (unsigned char *)&rsp_data, sizeof(rsp_data), szmsg);
 
 	//发送数据
-	rc=msglink_send(m_sock_fd, (unsigned char *)&msg_rsp_buff, msg_rsp_buff.head.data_len+sizeof(msg_rsp_buff.head), szmsg);
-	if(rc<0)//接收错误
+	//rc=msglink_send(m_sock_fd, (unsigned char *)&msg_rsp_buff, msg_rsp_buff.head.data_len+sizeof(msg_rsp_buff.head), szmsg);
+	//if(rc<0)//接收错误
+	//{
+	//    ERROR_MSG("msgid=[0x%02x], group_no=[%s], send response msg for connection failed!,rc=[%d]", head_ptr->msgid, info_ptr->group_no, rc);
+	//	//return -1;
+	//}
+
+	rc=send_msg(&msg_rsp_buff);
+	if(rc<0)
 	{
-	    ERROR_MSG("msgid=[0x%02x], group_no=[%s], send response msg for connection failed!,rc=[%d]", head_ptr->msgid, info_ptr->group_no, rc);
-		//return -1;
+		ERROR_MSG("断开连接应答发送失败,msgid=[0x%02x], group_no=[%s], send response msg for connection failed!,rc=[%d]", head_ptr->msgid, info_ptr->group_no, rc);
 	}
 	
 	clear_buinfo();
@@ -780,7 +842,7 @@ int CBuLinkThread::process_disconn(ST_MSGLINK_BUFF *msg_buff_ptr)
 
 //@brief 控制中心处理业务进程发起注册请求;
 int CBuLinkThread::process_buregister(ST_MSGLINK_BUFF * msg_buff_ptr)
-{	
+{
 	//int err_code=0;
 	char szmsg[256]={0};
 	ST_MSG_HEAD   *head_ptr=&msg_buff_ptr->head;//!< 报文头
@@ -863,16 +925,21 @@ int CBuLinkThread::process_buregister(ST_MSGLINK_BUFF * msg_buff_ptr)
 	
 	//发送数据
 	//int data_len=0;
-	rc=msglink_send(m_sock_fd, (unsigned char *)&msg_ack_buff, msg_ack_buff.head.data_len+sizeof(msg_ack_buff.head), szmsg);
-	if(rc<0)//接收错误
+	//rc=msglink_send(m_sock_fd, (unsigned char *)&msg_ack_buff, msg_ack_buff.head.data_len+sizeof(msg_ack_buff.head), szmsg);
+	//if(rc<0)//接收错误
+	//{
+	//    ERROR_MSG("msgid=[0x%02x], group_no=[%s], send response msg for connection failed!,rc=[%d]", head_ptr->msgid, info_ptr->group_no, rc);
+	//	return -1;
+	//}
+	rc=send_msg(&msg_ack_buff);
+	if(rc<0)
 	{
-	    ERROR_MSG("msgid=[0x%02x], group_no=[%s], send response msg for connection failed!,rc=[%d]", head_ptr->msgid, info_ptr->group_no, rc);
-		return -1;
+		ERROR_MSG("功能注册应答发送失败,msgid=[0x%02x], group_no=[%s], send response msg for connection failed!,rc=[%d]", head_ptr->msgid, info_ptr->group_no, rc);
 	}
 	
 	if(!msglink_check_ccflag((unsigned char *)msg_buff_ptr, CC_NEXT_FLAG))//不存在下一个注册请求
 	{
-	    m_link_stat=LNK_STAT_IDLE;//服务注册完毕,可以处理业务
+	    m_link_stat=LNK_STAT_READY;//服务注册完毕,可以处理业务
 	    return 0;
 	}
 	
@@ -925,9 +992,11 @@ int CBuLinkThread::process_buresponse(ST_MSGLINK_BUFF * msg_buff_ptr)
 	
 	if(!msglink_check_ccflag((unsigned char *)msg_buff_ptr, CC_NEXT_FLAG))//当前业务已经处理完成,可以处理下一个业务
 	{
-	    m_link_stat=LNK_STAT_IDLE;//服务注册完毕,可以处理业务
+	    m_link_stat=LNK_STAT_READY;//服务注册完毕,可以处理业务
 	    return 0;
 	}
+
+	return 0;
 }
 
 //@brief 控制中心处理业务进程发送的数据;

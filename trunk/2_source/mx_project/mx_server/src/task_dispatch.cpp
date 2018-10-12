@@ -33,6 +33,8 @@ int CTaskDispatch::dispatch_task(CTaskSession * task_session)
 		return -2;
 	}
 
+	task_session->update_tiemstamp(TIMESTAMP_ASSIGN);//!<设置分配任务线程时间
+
 	//请求分配给指定的业务线程
 	int rc=buthread->send_request_to_bu(task_session);
 	if(rc<0)
@@ -61,6 +63,7 @@ int CTaskDispatch::task_done(CTaskSession * task_session)
 		}
 	}
 
+	pTaskSession->update_tiemstamp(TIMESTAMP_DONE);//!<设置任务完成时间
 	m_task_done_que.push(pTaskSession);
 	return 0;
 }

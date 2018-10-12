@@ -93,6 +93,7 @@ class CBuGroupInfoList
 	
 	ST_BUFUNC_INFO *find_funcinfo(int group_id, char *func_id);
 	int get_lists(std::list<CBuGroupInfo*> &groupinfo_list);
+	std::list<CBuGroupInfo*> & get_lists();
 	
 	
   private:

@@ -211,6 +211,16 @@ CBuGroupInfoList::~CBuGroupInfoList()
 	m_use_groupinfo.clear();
 }
 
+void CBuGroupInfoList::clear()
+{
+	int n=sizeof(m_group_vec)/sizeof(m_group_vec[0]);
+
+	m_use_groupinfo.clear();
+	//初始情况下,所有指针都是可用的
+	for(int i=0; i<n; i++)
+	    m_free_groupinfo.push_back(&m_group_vec[i]);
+
+}
 //@brief 申请一个可用的业务组内存
 CBuGroupInfo *CBuGroupInfoList::alloc()
 {
@@ -303,4 +313,10 @@ int CBuGroupInfoList::get_lists(std::list<CBuGroupInfo*> &outGroupInfo_list)
 	    outGroupInfo_list.push_back(*iter);
 	}
 	return 0;
+}
+
+//@brief 返回所有业务组信息
+std::list<CBuGroupInfo*> & CBuGroupInfoList::get_lists()
+{
+	return m_use_groupinfo;
 }

@@ -113,6 +113,9 @@ class CBuLinkThread : public Thread_Base
       int check_msg_info(ST_MSGLINK_BUFF *msg_buff_ptr, unsigned short msgid);
 	   int clear_buinfo();
 	   int clear_sockinfo();
+
+	   int recv_msg(ST_MSGLINK_BUFF *msg_buff);
+	   int send_msg(ST_MSGLINK_BUFF *msg_buff);
    private:
        ItcMutex m_mutex;//!< 用于控制send_request_to_bu,防止同时调用该接口函数
    private:
