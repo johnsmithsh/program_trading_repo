@@ -21,6 +21,7 @@
 #ifndef __MXX_BULISTEN_THREAD_H_
 #define __MXX_BULISTEN_THREAD_H_
 
+#include <arpa/inet.h>
 #include "thread_base.h"
 
 class CBuListenThread : public Thread_Base
@@ -46,6 +47,7 @@ class CBuListenThread : public Thread_Base
      int m_max_listen;  //<! 最大连接数
      int m_recv_timeout;//<! socket接收超时时间,单位毫秒
      int m_send_timeout;//<! socket发送超时时间,单位毫秒
+     int m_listen_so;   //!< socket
      
      bool m_b_running;//!< 表明服务是否在运行; true-在run循环中;false-退出run循环;
      bool m_stop_flag;//!< 服务停止命令标记; HEARTBEAT_STOP_TRUE-收到停止命令, 服务需要退出; HEARTBEAT_STOP_FALSE-没有收到停止命令,服务可以继续运行;

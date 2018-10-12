@@ -1,6 +1,16 @@
 #ifndef _MXX_SERVER_CONTEXT_H_
 #define _MXX_SERVER_CONTEXT_H_
 
+/*
+ * @file
+ * @desc
+ *    描述服务上下文; 该服务下的线程可通过该上下文进行交互; 单实例模式; 整个服务进程只有一个实例;
+ * @detail\
+ *     包含如下部分信息:
+ *     1. bcc信息和业务服务序列号;
+ *        2. 业务组及业务线程链接信息;
+ *        3. 单实例模式操作;
+ * */
 #include "thread_bulink.h"
 #include "thread_bulisten.h"
 #include "bufuncmanage.h"

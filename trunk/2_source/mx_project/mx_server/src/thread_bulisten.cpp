@@ -1,10 +1,14 @@
 
+#include <string.h>
+#include <errno.h>
+
 #include "thread_bulisten.h"
 #include "logfile.h"
+#include "ConfigFile.h"
 
 //构造函数
 CBuListenThread::CBuListenThread(const char *thread_name/*="recv_thread"*/)
-    :Thread_Base(thread_name),m_lstn_port(0), m_max_listen(0),m_recv_timeout(0),m_send_timeout(0),m_b_running(false),m_stop_flag(false)
+    :Thread_Base(thread_name),m_lstn_port(0), m_max_listen(0),m_recv_timeout(0),m_send_timeout(0),m_listen_so(-1),m_b_running(false),m_stop_flag(false)
 {
    m_lstn_port=0;
    m_max_listen=0;
@@ -78,7 +82,7 @@ int CBuListenThread::listen_routine()
   int rc;  
   
   //启动监听端口
-  if((fd_listen=socket(AF_INET, SOCK_STREAM, 0))<0)
+  if((m_listen_so=socket(AF_INET, SOCK_STREAM, 0))<0)
   {
      FATAL_MSG("listen_thread: create socket  for server port error!");
      return -4;
@@ -91,20 +95,20 @@ int CBuListenThread::listen_routine()
   server_addr.sin_family=AF_INET;
   server_addr.sin_port=htons(m_lstn_port);
   server_addr.sin_addr.s_addr=htonl(INADDR_ANY);
-  if(bind(fd_listen, (struct sockaddr *)&server_addr, sizeof(server_addr))<0)
+  if(bind(m_listen_so, (struct sockaddr *)&server_addr, sizeof(server_addr))<0)
   {
-     close(fd_listen);
-     fd_listen=0;
+     close(m_listen_so);
+     m_listen_so=-1;
      FATAL_MSG("listen_thread: bind port[%d] failed!", m_lstn_port);
      return -5;
   }
 
   INFO_MSG("listen_thread: success to bind server port[%d]!\n", m_lstn_port);
 
-  if(listen(fd_listen, m_max_listen)<0)
+  if(listen(m_listen_so, m_max_listen)<0)
   {
-     close(fd_listen);
-     fd_listen=0;
+     close(m_listen_so);
+     m_listen_so=-1;
      FATAL_MSG("listen_thread: listen(%d) failed!", m_lstn_port);
      return -6;
   }
@@ -143,7 +147,7 @@ int CBuListenThread::listen_routine()
    
     //nfds=最大文件描述符+1
 	//accept需要读操作触发
-    rc=select(fd_listen+1, &fdset, NULL, NULL, &tv);
+    rc=select(m_listen_so+1, &fdset, NULL, NULL, &tv);
 	if(rc<0)
 	{
 	   errcode=errno;
@@ -155,11 +159,11 @@ int CBuListenThread::listen_routine()
 	
 	struct sockaddr_in cliaddr;//客户端地址;
 	socklen_t cliaddr_len = sizeof(cliaddr);
-	memset(cliaddr, 0, sizeof(cliaddr));
-	int conn_fd = accept(fd_listen, (struct sockaddr *)&cliaddr, &cliaddr_len);
+	memset(&cliaddr, 0, sizeof(cliaddr));
+	int conn_fd = accept(m_listen_so, (struct sockaddr *)&cliaddr, &cliaddr_len);
 	if (conn_fd < 0) 
 	{
-	  errcode=errno;
+	   errcode=errno;
       ERROR_MSG("listen_thread: accept client link error! [%d][%s]", errcode, strerror(errcode));
       continue;//return -1;//也不清楚该怎么处理了???
     }
@@ -171,8 +175,8 @@ int CBuListenThread::listen_routine()
   }//继续等待
 
   //清除连接
-  close(fd_listen);
-  fd_listen=0;
+  close(m_listen_so);
+  m_listen_so=-1;
 
   return 0;
 }
