@@ -7,6 +7,7 @@
 #include "mxx_net_socket.h"
 #include "logfile.h"
 #include "ConfigFile.h"
+#include "server_cfg_info.h"
 #include "msg_link_function.h"
 #include "bufuncmanage.h"
 #include "servercontext.h"
@@ -147,9 +148,9 @@ int msglink_recv(int so, unsigned char *buff, size_t buffsize, int *recv_len, ch
 
 //构造函数
 CBuLinkThread::CBuLinkThread(const char *thread_name/*="recv_thread"*/)
-    :Thread_Base(thread_name), m_sock_fd(MXX_SOCKET_INVALID_FD),m_max_listen(0),m_recv_timeout(0),m_send_timeout(0),m_b_running(false),m_stop_flag(false)
+    :Thread_Base(thread_name), m_sock_fd(MXX_SOCKET_INVALID_FD),m_recv_timeout(0),m_send_timeout(0),m_b_running(false),m_stop_flag(false)
 {
-   m_max_listen=0;
+   //m_max_listen=0;
    m_recv_timeout=m_send_timeout=0;
    m_b_running=false;
    m_stop_flag=false;
@@ -198,22 +199,11 @@ int CBuLinkThread::loadini(char *cfgfile)
         return -1;
     }
     
-    char serve_section[]="sourth_server";
-    //m_lstn_port   =cfg.read_int(serve_section,  "serverport", 9999);//!< 服务监听端口
-    m_max_listen  =cfg.read_int(serve_section,  "max_conn",   1024); //!< 最大连接数
-    m_recv_timeout=cfg.read_int(serve_section,  "timeout",    1000); //!< 接收超时,单位毫秒
+    char serve_section[]="BalanceCtrlCenter";
+    //m_lstn_port   =cfg.read_int(serve_section,  "backend_listen_port", 9999);//!< 服务监听端口
+    //m_max_listen  =cfg.read_int(serve_section,  "backend_max_conn",   1024); //!< 最大连接数
+    m_recv_timeout=cfg.read_int(serve_section,  "backend_timeout",    1000); //!< 接收超时,单位毫秒
     m_send_timeout = m_recv_timeout; //!< 发送超时时间,单位毫秒
-    
-    //if(m_lstn_port<=0)
-    //{
-    //    FATAL_MSG("[%s][%s]服务端口配置不合法!", serve_section, "serverport");
-    //    return -1;
-    //}
-    //if(m_max_listen<1)
-    //{
-    //    FATAL_MSG("[%s][%s]最大连接数配置不合法!", serve_section, "max_conn");
-    //    return -1;
-    //}
     
     if( ((m_recv_timeout<0)||(m_recv_timeout>3000))
         ||((m_send_timeout<0)||(m_send_timeout>3000))
@@ -343,16 +333,17 @@ int CBuLinkThread::bind_to_socket(int so)
 	    return -1;
 	int rc=0;	
 	//判断服务状态...
-	if(LNK_STAT_INIT==m_link_stat)//服务没有运行,先加载配置文件
-	{
-	    rc=this->loadini(NULL);
-		if(rc<0)
-		{
-		    ERROR_MSG("link_thread: 加载配置文件失败! rc=[%d]", rc);
-			return -4;
-		}
-	}
-	else if(LNK_STAT_TERMINATE==m_link_stat)//服务停止指令,不能再绑定新
+	//if(LNK_STAT_INIT==m_link_stat)//服务没有运行,先加载配置文件
+	//{
+	//    rc=this->loadini(NULL);
+	//	if(rc<0)
+	//	{
+	//	    ERROR_MSG("link_thread: 加载配置文件失败! rc=[%d]", rc);
+	//		return -4;
+	//	}
+	//}
+	//else
+	if(LNK_STAT_TERMINATE==m_link_stat)//服务停止指令,不能再绑定新
 	{
 	    return -2;
 	}
@@ -361,27 +352,43 @@ int CBuLinkThread::bind_to_socket(int so)
 	    return -3;
 	}
 	
+	if(THREAD_SS_INIT==get_thread_status())//线程没有启动
+	{
+		int rc;
+		rc=loadini(SERVER_CFG_FILENAME);
+		if(rc<0)
+		{
+			ERROR_MSG("bulinkthread start failed! can not load config option error! rc=[%d]", rc);
+			return -4;
+		}
+		rc=start_thread();
+		if(rc<0)
+		{
+			ERROR_MSG("bulinkthread start failed! run thread error! rc=[%d]", rc);
+			return -5;
+		}
+	}
 	
 	//先把状态设置了,防止被强占; 其实只有listen_thread调用该函数,不会出现竞争,就不用线程锁了
 	m_link_stat=LNK_STAT_LINKING;
 	m_sock_fd = so;
 	
 	//this->start_thread();//!< 启动线程
-	//return 0;
+	return 0;
 }
 
 int CBuLinkThread::service_routine() 
 {
   int rc;  
   
-  INFO_MSG("listen_thread: sucess to listen server port\n");
+  INFO_MSG("bulink_thread: sucess to listen server port\n");
 
   //业务比较少,使用select即可
   //设置socket读超时时间,感觉有点不靠谱
   fd_set fdset;//
   struct timeval tv;//!< 超时时间,如果accept不设置超时时间, 则一直阻塞,会收不到进程停止信号
 
-  INFO_MSG("listen_thread: success to add server socket to epoll monitor!\n");
+  INFO_MSG("bulink_thread: success to add server socket to epoll monitor!\n");
 
   int errcode;
   while((!m_stop_flag) //线程停止指令

@@ -2,9 +2,11 @@
 #include <string.h>
 #include <errno.h>
 
-#include "thread_bulisten.h"
 #include "logfile.h"
 #include "ConfigFile.h"
+
+#include "thread_bulisten.h"
+#include "servercontext.h"
 
 //构造函数
 CBuListenThread::CBuListenThread(const char *thread_name/*="recv_thread"*/)
@@ -39,7 +41,7 @@ void CBuListenThread::run()
 	this->listen_routine();
 	m_b_running=false;
 }
-int CBuListenThread::loadini(char *cfgfile)
+int CBuListenThread::loadini(const char *cfgfile)
 {
     ConfigFile cfg;
     int rc=cfg.load_cfg_file(cfgfile);
@@ -50,19 +52,19 @@ int CBuListenThread::loadini(char *cfgfile)
     }
     
     char serve_section[]="sourth_server";
-    m_lstn_port   =cfg.read_int(serve_section,  "serverport", 9999);//!< 服务监听端口
-    m_max_listen  =cfg.read_int(serve_section,  "max_conn",   1024); //!< 最大连接数
-    m_recv_timeout=cfg.read_int(serve_section,  "timeout",    1000); //!< 接收超时,单位毫秒
+    m_lstn_port   =cfg.read_int(serve_section,  "backend_listen_port", 9999);//!< 服务监听端口
+    m_max_listen  =cfg.read_int(serve_section,  "backend_max_conn",    1024); //!< 最大连接数
+    m_recv_timeout=cfg.read_int(serve_section,  "backend_timeout",     1000); //!< 接收超时,单位毫秒
     m_send_timeout = m_recv_timeout; //!< 发送超时时间,单位毫秒
     
     if(m_lstn_port<=0)
     {
-        FATAL_MSG("[%s][%s]服务端口配置不合法!", serve_section, "serverport");
+        FATAL_MSG("[%s][%s]服务端口配置不合法!", serve_section, "backend_listen_port");
         return -1;
     }
     if(m_max_listen<1)
     {
-        FATAL_MSG("[%s][%s]最大连接数配置不合法!", serve_section, "max_conn");
+        FATAL_MSG("[%s][%s]最大连接数配置不合法!", serve_section, "backend_max_conn");
         return -1;
     }
     
@@ -70,7 +72,7 @@ int CBuListenThread::loadini(char *cfgfile)
         ||((m_send_timeout<0)||(m_send_timeout>3000))
       )
     {
-        FATAL_MSG("[%s][%s]超时时间配置不合法!范围[0,3000]", serve_section, "timeout");
+        FATAL_MSG("[%s][%s]超时时间配置不合法!范围[0,3000]", serve_section, "backend_timeout");
         return -1;
     }
     
@@ -139,6 +141,7 @@ int CBuListenThread::listen_routine()
   //bool conn_close_flag=false;//连接断开标记
 
   int errcode;
+  char szMsg[256]={0};
   while(!m_stop_flag) 
   {
     FD_ZERO(&fdset);
@@ -151,9 +154,18 @@ int CBuListenThread::listen_routine()
 	if(rc<0)
 	{
 	   errcode=errno;
+	   if(EINTR==errcode)
+		   continue;
+	   else
+	   {
+		   ERROR_MSG("CBuListenThread::listen_routine select errro! [%d][%s]", errcode, strerror(errcode));
+	   }
+	   continue;
 	}
 	else if(0==rc)
 	{
+		DEBUG_MSG("no client accept");
+		continue;
 	}
 	//select 返回的是触发描述符个数,不过此处只有一个,也就不用检查了
 	
@@ -171,6 +183,22 @@ int CBuListenThread::listen_routine()
 	//todo 查找可用连接吧!
 	
 	//todo 启动服务...
+	CServerContext *ctx_instance=CServerContext::get_instance();
+	if(NULL==ctx_instance)
+	{
+		ERROR_MSG("no server context,can not bing socket to bulinkthread");
+		close(conn_fd);
+		continue;
+	}
+
+	//将socket绑定到一个业务线程
+	rc=ctx_instance->bind_socket_to_bulinkthread(conn_fd, szMsg);
+	if(rc<0)
+	{
+		ERROR_MSG("bind socket to bulinkthread error! [%d] [%s]", rc, szMsg);
+		close(conn_fd);
+		continue;
+	}
 
   }//继续等待
 

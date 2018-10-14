@@ -8,10 +8,16 @@ public:
     CServerManage();
     virtual ~CServerManage();
 public:
+   int init();
     //启动服务
     int start_service();
     //停止服务
     int stop_service();
+private:
+    //@brief 启动bulisten服务
+    int start_bulisten_thread(const char *cfgfile);
+    //@brief 停止bulisten服务
+    int stop_bulisten_thread();
 private:
     //@brief 启动心跳线程; 0-成功;<0-失败;
     int start_heartbeat_thread(const char *cfgfile);

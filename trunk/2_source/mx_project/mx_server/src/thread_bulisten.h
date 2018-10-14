@@ -38,7 +38,7 @@ class CBuListenThread : public Thread_Base
      virtual void run();
      virtual int terminate_service();//!< 线程退出命令
    public:
-     int loadini(char *cfgfile);
+     int loadini(const char *cfgfile);
    private:
      //接收例程
      int listen_routine();

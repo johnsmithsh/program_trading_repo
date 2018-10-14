@@ -247,6 +247,7 @@ void toShowInfo()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////
+#define LOG_CFG_FILE "./conf/log_cfg.ini" //日志配置文件
 int set_signal_function();
 /** 
  * @brief 程序入口main函数
@@ -261,11 +262,11 @@ int set_signal_function();
 int main(int argc, char **argv)
 {
     int rc;
-    print_buildversion();
+    //print_buildversion();
     
     ST_SystemPara * sys_para_ptr=get_system_para_instance();
     //解析参数...
-    for(int i =0; i<argc; i++)
+    for(int i =1; i<argc; i++)
     {
          if((strcmp(argv[i], "-h")==0) || (strcmp(argv[i], "--help")==0))//<! 打印帮助信息
          {
@@ -274,7 +275,7 @@ int main(int argc, char **argv)
          }
          else if((strcmp(argv[i], "-v")==0) || (strcmp(argv[i], "--version")==0))//版本信息
          {
-             //print_buildversion();
+             print_buildversion();
              exit(0);
          }
          else if((strcmp(argv[i], "-b")==0))//后台运行模式
@@ -285,7 +286,7 @@ int main(int argc, char **argv)
     
     //初始化日志...
     //初始化日志尽量提前做
-    if(!mxx_log_init("./log_cfg.ini"))
+    if(!mxx_log_init(LOG_CFG_FILE))
     {
         printf("Error: 初始化日志信息出错!\n");
         exit(1);
@@ -342,10 +343,14 @@ int main(int argc, char **argv)
     
     //信号处理函数...
     set_signal_function();
-
-    
-
-    
+    rc = g_server_manage.init();
+    if(rc<0)
+     {
+    	FATAL_MSG("g_server_manage:init failed! rc=[%d]", rc);
+    	delete_global_ctrl_instance();//!<其实此处省略也没有影响
+    	mxx_log_destroy(); //!< 此处省略也没有影响
+    	return -1;
+     }
     rc=g_server_manage.start_service();
     if(rc<0)
     {

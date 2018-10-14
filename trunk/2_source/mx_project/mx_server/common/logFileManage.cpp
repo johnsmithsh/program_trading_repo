@@ -33,15 +33,15 @@ CLogFileManage* CLogFileManage::CreateInstance(const char *cfgfile)
 
 CLogFileManage* CLogFileManage::GetInstance()
 {
-    if(NULL==m_instance)
-	{
-	    m_instance=new CLogFileManage();
-		if(!m_instance->init())
-		{
-		    delete m_instance;
-			m_instance=NULL;
-		}
-	}
+    //if(NULL==m_instance)
+	//{
+	//    m_instance=new CLogFileManage();
+	//	if(!m_instance->init())
+	//	{
+	//	    delete m_instance;
+	//		m_instance=NULL;
+	//	}
+	//}
 	return m_instance;    
 }
 

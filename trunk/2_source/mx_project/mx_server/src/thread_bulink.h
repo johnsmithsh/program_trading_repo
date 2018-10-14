@@ -34,7 +34,7 @@
 //业务连接状态
 //由于下层业务需要注册业务信息,故必须设置业务状态
 #define LNK_STAT_INIT          0 //!< 初始状态, 线程也没有启动, 即业务并没有连接
-#define LNK_STAT_NONE_SERVICE  1 //!< 线程空运行,没有业务连接; 如服务进程突然崩溃
+#define LNK_STAT_NONE_SERVICE  1 //!< 线程空运行,没有业务连接(即socket); 如服务进程突然崩溃
 #define LNK_STAT_LINKING       2 //!< 连接中,一般注册信息
 #define LNK_STAT_REGISTERING   3 //!< 等待bu注册
 #define LNK_STAT_READY         4 //!< 服务空闲,可以分配任务
@@ -67,6 +67,7 @@ class CBuLinkThread : public Thread_Base
      virtual int terminate_service();//!< 线程退出命令
    public:
      int loadini(char *cfgfile);
+     bool check_can_bindsocket() { return (LNK_STAT_INIT==m_link_stat)||(LNK_STAT_NONE_SERVICE==m_link_stat); }
      int bind_to_socket(int so);
      void get_bulinkinfo(ST_SVR_LINK_HANDLE &bulinkinfo);
    public://对外接口
@@ -128,8 +129,8 @@ class CBuLinkThread : public Thread_Base
      int  m_bu_no;//!< 控制中心分配给业务进程的业务号
 	 
 	 //socket相关信息
-     int m_sock_fd;     //!< 服务端口号
-     int m_max_listen;  //!< 最大连接数
+     int m_sock_fd;     //!< connection socket
+     //int m_max_listen;  //!< 最大连接数
      int m_recv_timeout;//!< socket接收超时时间,单位毫秒
      int m_send_timeout;//!< socket发送超时时间,单位毫秒
 

@@ -5,7 +5,6 @@
 
 #include "thread_base.h"
 
-
 int Thread_Base::m_thread_count=0;
 
 /////////////////////////////////////////////////////////////
@@ -18,7 +17,7 @@ void* thread_proc_posix(void *arg_ptr)
     obj_ptr->run();
     obj_ptr->clear();
     // obj_ptr->terminate();
-	
+    
     return NULL;
 }
 ////////////////////////////////////////////////////////////
@@ -61,8 +60,10 @@ int Thread_Base::clear()
 int Thread_Base::start_thread()
 {
     int rc;
-	if(m_thread_id<=0)//线程已经存在 
-	    return -1;
+    if(m_thread_id<=0)//线程已经存在 
+        return -1;
+    set_thread_status(THREAD_SS_STARTING);//m_thread_status=THREAD_SS_STARTING;//开始启动
+
     pthread_attr_t attr;
     pthread_attr_init(&attr);
 
@@ -82,10 +83,14 @@ int Thread_Base::start_thread()
 
     rc=pthread_create(&m_thread_id, &attr, thread_proc_posix, this);
     if(0!=rc)
+    {
+        set_thread_status(THREAD_SS_INIT);//
         return -2;
+    }
 
     pthread_attr_destroy(&attr);
 
+    set_thread_status(THREAD_SS_RUNNING);//m_thread_status=THREAD_SS_RUNNING;//!<线程开始运行了
     return 0;
 }
 

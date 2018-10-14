@@ -33,8 +33,8 @@ class CServerContext
       //CPushThread    m_push_thread[10];//!< 推送线程, 将处理结果返回客户端
 
   public:
-      unsigned int m_bcc_id;//!< 本控制中心的id
-      unsigned int m_max_buno;
+      unsigned int m_bcc_id;   //!< 本控制中心的id
+      unsigned int m_max_buno; //!< 业务进程id分配序列,链接到控制中心时由控制中心生成并返回;
   public:
       unsigned int get_bcc_id()    { return m_bcc_id; }
       unsigned int get_next_buno() {  return ++m_max_buno; }
@@ -49,9 +49,15 @@ class CServerContext
 	  //CBuGroupInfo m_groupinfo[20];//!< 业务组信息,记录各业务组支持的业务功能; 每个group表示一组同类bu支持的业务
 	  //
 	  //CBuGroupManage m_bugroup[200];//!< 每个变量表示一个
-	  CBuLinkThread  m_bulink_threads[150];//!< 与每个下级系统维护一个连接,下级系统比较少
+
+     CBuLinkThread  m_bulink_threads[150];//!< 与每个下级系统维护一个连接,下级系统比较少
 	  CBuListenThread m_bulisten_thread;   //!< 监听下级系统连接
 	  //CTaskDispatch m_dispach;//!< 任务分发器,将受到的请求分发给不同的业务进程
+
+	  //@brief bu端链接绑定到一个业务处理线程
+	  int bind_socket_to_bulinkthread(int socket, char *szMsg);
+  private:
+	  ItcMutex m_bulinkthread_mutex;//!<
   //------------------------------------------------------------------------------------------------------
 
   public:

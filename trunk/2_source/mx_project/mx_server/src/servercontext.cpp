@@ -37,3 +37,37 @@ void CServerContext::find_groupinfo(unsigned int bu_func_id, std::list<CBuGroupI
 	CFuncRegister::find_groupinfo(func_id_str, '\0', group_list);
 	return;
 }
+
+//--------------------------------------------------------------------------------------------------------------------------------------------------
+int CServerContext::bind_socket_to_bulinkthread(int socket, char *szMsg)
+{
+
+	int rc;
+	AutoMutex autolock(&m_bulinkthread_mutex);
+	//找到一个空闲线程
+	CBuLinkThread *bulinkthread_ptr=NULL;
+	int num=150;
+	for(int i=0; i<num; ++i)
+	{
+		if(m_bulink_threads[i].check_can_bindsocket())
+		{
+			bulinkthread_ptr = &m_bulink_threads[i];
+			break;
+		}
+	}
+
+	if(NULL==bulinkthread_ptr)
+	{
+		if(NULL!=szMsg) sprintf(szMsg, "no available bulinkthread to bind socket");
+		return -1;
+	}
+
+	rc=bulinkthread_ptr->bind_to_socket(socket);
+	if(rc<0)
+	{
+		if(NULL!=szMsg) sprintf(szMsg, "call bulinkthread::bind_to_socket error![%d]", rc);
+		return -2;
+	}
+
+	return 0;
+}
