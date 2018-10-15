@@ -286,7 +286,9 @@ int CBuLinkThread::recv_msg(ST_MSGLINK_BUFF *msg_buff)
     	ERROR_MSG("msglink_recv failed; [%d] [%s]", rc, szmsg);
     	if(MSG_SOCK_CLOSE==rc)//接收过程中socket关闭
     	{
-    		//todo 既然socket关闭了,那么该线程自动释放;数据直接丢弃
+    		// 既然socket关闭了,那么该线程自动释放;数据直接丢弃
+    		WARN_MSG("bulinkthread: socket close");
+    		process_socket_close();
     	}
     	return -1;
     }
@@ -314,6 +316,8 @@ int CBuLinkThread::send_msg(ST_MSGLINK_BUFF *msg_buff)
 		if(MSG_SOCK_CLOSE==rc)//接收过程中socket关闭
 	    {
 			//todo 既然socket关闭了,那么该线程自动释放;数据直接丢弃
+			WARN_MSG("bulinkthread: socket close");
+			process_socket_close();
 	    }
 	   return -1;
 	}
@@ -377,6 +381,22 @@ int CBuLinkThread::bind_to_socket(int so)
 	return 0;
 }
 
+//@brief 处理socket关闭的情况
+void CBuLinkThread::process_socket_close()
+{
+	close(m_sock_fd);
+	m_sock_fd = -1;
+
+	m_group_id = 0;//!< 该服务组(支持业务)信息描述索引; 本服务产生
+	memset(m_group_no,   0, sizeof(m_group_no));   //!< 进程所属, 服务组号; 底层服务注册;
+	memset(m_buversion,  0, sizeof(m_buversion));  //!< 业务版本信息; 底层服务注册
+	memset(m_buprogname, 0, sizeof(m_buprogname)); //!< 另一端业务进程的程序名
+	memset(m_bu_pid,     0, sizeof(m_bu_pid));     //!< 业务进程id
+	m_bu_no = 0;//!< 控制中心分配给业务进程的业务号
+
+	m_link_stat = LNK_STAT_NONE_SERVICE;
+}
+
 int CBuLinkThread::service_routine() 
 {
   int rc;  
@@ -388,7 +408,7 @@ int CBuLinkThread::service_routine()
   fd_set fdset;//
   struct timeval tv;//!< 超时时间,如果accept不设置超时时间, 则一直阻塞,会收不到进程停止信号
 
-  INFO_MSG("bulink_thread: success to add server socket to epoll monitor!\n");
+  //INFO_MSG("bulink_thread: success to add server socket!\n");
 
   int errcode;
   while((!m_stop_flag) //线程停止指令
@@ -403,12 +423,14 @@ int CBuLinkThread::service_routine()
 		//    close(m_sock_fd);
 		//	m_sock_fd=MXX_SOCKET_INVALID_FD;
 		//}
+    	DEBUG_MSG("bulinkthread: [%s] idle thread", get_thread_name());
 	    os_thread_msleep(1000);//
 	    continue;
 	}
 	
     //等待业务进程数据...
 	FD_ZERO(&fdset);
+	FD_SET(m_sock_fd, &fdset);
 	tv.tv_sec = 5;//!< 超时时间5秒; 懒得读取配置文件
 	tv.tv_usec=0;
    
@@ -422,6 +444,7 @@ int CBuLinkThread::service_routine()
 	}
 	else if(0==rc)
 	{
+		DEBUG_MSG("bulink thread no data arrive");
 	}
 	
 	//select 返回的是触发描述符个数,不过此处只有一个,也就不用检查了
@@ -455,10 +478,10 @@ int CBuLinkThread::service_routine()
 	  }
 	}
 	
-	if(rc<0)//处理错误,线程准备退出
-	{
-	    break;
-	}
+	//if(rc<0)//处理错误,线程准备退出
+	//{
+	//    break;
+	//}
 	//后续处理
     
 	//if(LNK_STAT_LINKING==m_link_stat)//!< 正在连接...

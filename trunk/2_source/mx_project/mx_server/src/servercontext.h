@@ -56,6 +56,8 @@ class CServerContext
 
 	  //@brief bu端链接绑定到一个业务处理线程
 	  int bind_socket_to_bulinkthread(int socket, char *szMsg);
+	  //@brief 停止bu监听和链接线程
+	  int stop_buthread();
   private:
 	  ItcMutex m_bulinkthread_mutex;//!<
   //------------------------------------------------------------------------------------------------------

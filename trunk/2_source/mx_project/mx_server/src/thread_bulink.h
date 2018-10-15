@@ -79,8 +79,10 @@ class CBuLinkThread : public Thread_Base
        //@返回业务链接状态
      int get_link_stat() { return m_link_stat; }
    private:
-    //接收例程; 处理来自业务进程的消息
-    int service_routine();
+       //接收例程; 处理来自业务进程的消息
+     int service_routine();
+     //@brief 处理socket关闭的情况
+     void process_socket_close();
    private://业务处理函数
     int wait_buconn();
 	int wait_buregister();

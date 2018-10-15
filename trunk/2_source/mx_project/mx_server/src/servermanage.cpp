@@ -138,7 +138,9 @@ int CServerManage::stop_bulisten_thread()
 	CServerContext *ctx_instance=CServerContext::get_instance();
 	if(NULL!=ctx_instance)
 	{
-		ctx_instance->m_bulisten_thread.stop_thread();
+		ctx_instance->stop_buthread();
 	}
+
+
 	return 0;
 }

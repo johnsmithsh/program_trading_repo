@@ -219,4 +219,16 @@ int mxx_socket_send_nowait(int sockfd, char *buff, int datalen,  int *snd_len);
 
 int mxx_socket_read(int sockfd, char *buff, int datalen,  int *snd_len, int timeout=0);
 int mxx_socket_write(int sockfd, char *buff, int datalen,  int *snd_len, int timeout=0);
+
+/**
+ * @brief socket发送tcp数据,直到发送长度数据或者超时;
+ * @param
+ *   [in]sockfd
+ *   [in]buff/buffsize: 缓存指针和缓存大小
+ *   [out]snd_len: 实际发送数据长度
+ * @retval
+ *    0-成功;
+ *    其他小于0-错误;
+ **/
+int mxx_socket_checkavaiable(int sockfd, int rwtype, int timeout=0);
 #endif

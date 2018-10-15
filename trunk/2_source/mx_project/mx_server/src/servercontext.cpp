@@ -10,7 +10,13 @@ CServerContext *CServerContext::m_instance=NULL;
 
 CServerContext::CServerContext():m_bcc_id(0),m_max_buno(0)
 {
-
+	int num=sizeof(m_bulink_threads)/sizeof(CBuLinkThread);
+	char bulinkthreadname[64]={0};
+	for(int i=0; i<num; ++i)
+	{
+		sprintf(bulinkthreadname, "bulinkthread_%03d", i);
+		m_bulink_threads[i].set_thread_name(bulinkthreadname);
+	}
 }
 
 CServerContext::~CServerContext()
@@ -46,7 +52,7 @@ int CServerContext::bind_socket_to_bulinkthread(int socket, char *szMsg)
 	AutoMutex autolock(&m_bulinkthread_mutex);
 	//找到一个空闲线程
 	CBuLinkThread *bulinkthread_ptr=NULL;
-	int num=150;
+	int num=sizeof(m_bulink_threads)/sizeof(CBuLinkThread);
 	for(int i=0; i<num; ++i)
 	{
 		if(m_bulink_threads[i].check_can_bindsocket())
@@ -67,6 +73,27 @@ int CServerContext::bind_socket_to_bulinkthread(int socket, char *szMsg)
 	{
 		if(NULL!=szMsg) sprintf(szMsg, "call bulinkthread::bind_to_socket error![%d]", rc);
 		return -2;
+	}
+
+	return 0;
+}
+
+//@brief 停止bu监听和链接线程
+int CServerContext::stop_buthread()
+{
+
+	//停止bu监听线程
+	m_bulisten_thread.stop_thread();
+
+	//停止bu链接线程
+	{
+		AutoMutex autolock(&m_bulinkthread_mutex);
+		//找到一个空闲线程
+		int num=sizeof(m_bulink_threads)/sizeof(CBuLinkThread);
+		for(int i=0; i<num; ++i)
+		{
+			m_bulink_threads[i].stop_thread();
+		}
 	}
 
 	return 0;

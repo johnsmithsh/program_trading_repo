@@ -5,43 +5,44 @@
 #include "logfile.h"
 #include "ConfigFile.h"
 
-#include "thread_bulisten.h"
+#include "thread_bu.h"
 #include "servercontext.h"
 
 //构造函数
-CBuListenThread::CBuListenThread(const char *thread_name/*="recv_thread"*/)
-    :Thread_Base(thread_name),m_lstn_port(0), m_max_listen(0),m_recv_timeout(0),m_send_timeout(0),m_listen_so(-1),m_b_running(false),m_stop_flag(false)
+CBuThread::CBuThread(const char *thread_name/*="recv_thread"*/)
+    :Thread_Base(thread_name),m_b_running(false),m_stop_flag(false)
 {
-   m_lstn_port=0;
-   m_max_listen=0;
-   m_max_listen=0;
-   m_recv_timeout=m_send_timeout=0;
+   memset(m_bcc_ip, 0, sizeof(m_bcc_ip);
+   m_bcc_port = -1;
+   m_recv_timeout = m_send_timeout = 0; 
+   m_bccconn_so = -1;   //!< socket
+   
    m_b_running=false;
    m_stop_flag=false;
 }
 //析构函数
-CBuListenThread::~CBuListenThread()
+CBuThread::~CBuThread()
 {
 }
 
-int CBuListenThread::init()
+int CBuThread::init()
 {
    return 0;
 }
 
-int CBuListenThread::terminate_service()
+int CBuThread::terminate_service()
 {
     m_stop_flag=true;
     return 0;
 }
 
-void CBuListenThread::run()
+void CBuThread::run()
 {
     m_b_running=true;
 	this->listen_routine();
 	m_b_running=false;
 }
-int CBuListenThread::loadini(const char *cfgfile)
+int CBuThread::loadini(const char *cfgfile)
 {
     ConfigFile cfg;
     int rc=cfg.load_cfg_file(cfgfile);
@@ -51,7 +52,7 @@ int CBuListenThread::loadini(const char *cfgfile)
         return -1;
     }
     
-    char serve_section[]="BalanceCtrlCenter";
+    char serve_section[]="sourth_server";
     m_lstn_port   =cfg.read_int(serve_section,  "backend_listen_port", 9999);//!< 服务监听端口
     m_max_listen  =cfg.read_int(serve_section,  "backend_max_conn",    1024); //!< 最大连接数
     m_recv_timeout=cfg.read_int(serve_section,  "backend_timeout",     1000); //!< 接收超时,单位毫秒
@@ -79,7 +80,7 @@ int CBuListenThread::loadini(const char *cfgfile)
     return 0;   
 }
 
-int CBuListenThread::listen_routine() 
+int CBuThread::listen_routine() 
 {
   int rc;  
   
@@ -122,7 +123,7 @@ int CBuListenThread::listen_routine()
   fd_set fdset;//
   struct timeval tv;//!< 超时时间,如果accept不设置超时时间, 则一直阻塞,会收不到进程停止信号
 
-  //INFO_MSG("listen_thread: success to add server socket to epoll monitor!\n");
+  INFO_MSG("listen_thread: success to add server socket to epoll monitor!\n");
 
 
   //g_client_ptr = new ST_SockConnHandle[m_max_listen+1];//客户端连接
@@ -145,7 +146,6 @@ int CBuListenThread::listen_routine()
   while(!m_stop_flag) 
   {
     FD_ZERO(&fdset);
-    FD_SET(m_listen_so, &fdset);
 	tv.tv_sec = 5;//!< 超时时间5秒; 懒得读取配置文件
 	tv.tv_usec=0;
    
@@ -159,13 +159,13 @@ int CBuListenThread::listen_routine()
 		   continue;
 	   else
 	   {
-		   ERROR_MSG("CBuListenThread::listen_routine select errro! [%d][%s]", errcode, strerror(errcode));
+		   ERROR_MSG("CBuThread::listen_routine select errro! [%d][%s]", errcode, strerror(errcode));
 	   }
 	   continue;
 	}
 	else if(0==rc)
 	{
-		DEBUG_MSG("bulisten: no client accept");
+		DEBUG_MSG("no client accept");
 		continue;
 	}
 	//select 返回的是触发描述符个数,不过此处只有一个,也就不用检查了
@@ -187,7 +187,7 @@ int CBuListenThread::listen_routine()
 	CServerContext *ctx_instance=CServerContext::get_instance();
 	if(NULL==ctx_instance)
 	{
-		ERROR_MSG("bulisten: no server context,can not bing socket to bulinkthread");
+		ERROR_MSG("no server context,can not bing socket to bulinkthread");
 		close(conn_fd);
 		continue;
 	}
@@ -196,7 +196,7 @@ int CBuListenThread::listen_routine()
 	rc=ctx_instance->bind_socket_to_bulinkthread(conn_fd, szMsg);
 	if(rc<0)
 	{
-		ERROR_MSG("bulisten: bind socket to bulinkthread error! [%d] [%s]", rc, szMsg);
+		ERROR_MSG("bind socket to bulinkthread error! [%d] [%s]", rc, szMsg);
 		close(conn_fd);
 		continue;
 	}
