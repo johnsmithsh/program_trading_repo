@@ -21,6 +21,8 @@
 #ifndef _MXX_MSG_LINK_DEFINE_H_
 #define _MXX_MSG_LINK_DEFINE_H_
 
+#include <stdint.h>
+
 //定义业务类型
 #define MSGTYPE_CONN        0x45 //!< 建立连接    控制中心<=业务进程
 #define MSGTYPE_REG_FUNC    0x46 //!< 注册业务id  控制中心<=业务进程

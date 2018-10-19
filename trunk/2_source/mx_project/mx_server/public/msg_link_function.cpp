@@ -896,23 +896,14 @@ int msglink_check_ccflag(unsigned char *buff, char ccflag_type)
 	return 0;
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //@brief 设置报文: 初始化报文头
-int msglink_pkg_head_init(unsigned char *buff, size_t buffsize, unsigned short msgid, char *errmsg)
+int msglink_head_init(ST_MSG_HEAD *msg_head_ptr)
 {
-    if( (NULL==buff)||(buffsize<sizeof(ST_MSG_HEAD)+sizeof(ST_MSG_COMMON)) )
-	{
-	    if(NULL!=errmsg) sprintf(errmsg, "msg消息缓存不足");
-        return -1;
-	}
-    memset(buff, 0, sizeof(ST_MSG_HEAD));
-    ST_MSG_HEAD *head_ptr=(ST_MSG_HEAD*)buff;
-	//ST_MSG_COMMON *comminfo_ptr=(ST_MSG_COMMON*)(buff+sizeof(ST_MSG_HEAD));
-    //设置报文头
-    head_ptr->msgid=msgid;
-    head_ptr->data_len = sizeof(ST_MSG_COMMON);
-
-    return 0;
+	memset(msg_head_ptr, 0, sizeof(ST_MSG_HEAD));
+	return 0;
 }
+
 int msglink_head_set_msgtypeinfo(ST_MSG_HEAD *msg_head_ptr, unsigned int msgtype, unsigned int mask)
 {
 	msg_head_ptr->msgid = msgtype;
@@ -920,36 +911,17 @@ int msglink_head_set_msgtypeinfo(ST_MSG_HEAD *msg_head_ptr, unsigned int msgtype
 
 	return 0;
 }
-//@brief 设置报文: 连接信息
-int msglink_pkg_conninfo(unsigned char *buff, size_t buffsize, int bcc_id, int bu_no, char *group_no, char *errmsg)
-{
-    if( (NULL==buff)||(buffsize<sizeof(ST_MSG_HEAD)+sizeof(ST_MSG_COMMON)) )
-	{
-	    if(NULL!=errmsg) sprintf(errmsg, "msg消息缓存不足");
-        return -1;
-	}
-    memset(buff, 0, sizeof(ST_MSG_HEAD));
-    //ST_MSG_HEAD *head_ptr=(ST_MSG_HEAD*)buff;
-	ST_MSG_COMMON *comminfo_ptr=(ST_MSG_COMMON*)(buff+sizeof(ST_MSG_HEAD));
-    
-	strncpy(comminfo_ptr->group_no, group_no, sizeof(comminfo_ptr->group_no));
-	comminfo_ptr->bcc_id=bcc_id;
-	comminfo_ptr->bu_no=bu_no;
 
-    return 0;
+//@brief 设置流水信息
+int msglink_head_set_serialno(ST_MSG_HEAD *msg_head_ptr, unsigned int serial_no)
+{
+	return 0;
 }
 
-//@brief 设置报文: 控制信息
-int msglink_pkg_ctrlinfo(unsigned char *buff, size_t buffsize, bool first_flag, bool next_flag, bool ack_flag, bool push_flag, char *errmsg)
+//@brief 设置报文头crc,crc包含报文长度; 必须在报文数据添加完成后才能创建crc;
+int msglink_head_set_crc(ST_MSG_HEAD *msg_head_ptr, unsigned int crc)
 {
-    return 0;
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//@brief 设置报文: 初始化报文头
-int msglink_head_init(ST_MSG_HEAD *msg_head_ptr)
-{
-	memset(msg_head_ptr, 0, sizeof(msg_head_ptr));
+	msg_head_ptr->head_crc = crc;
 	return 0;
 }
 
@@ -1012,3 +984,47 @@ int msglink_pkg_data_append(unsigned char *buff, size_t buffsize, unsigned char 
 
     return 0;
 }
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//@brief 设置报文: 初始化报文头
+int msglink_pkg_head_init(unsigned char *buff, size_t buffsize, unsigned short msgid, char *errmsg)
+{
+    if( (NULL==buff)||(buffsize<sizeof(ST_MSG_HEAD)+sizeof(ST_MSG_COMMON)) )
+	{
+	    if(NULL!=errmsg) sprintf(errmsg, "msg消息缓存不足");
+        return -1;
+	}
+    memset(buff, 0, sizeof(ST_MSG_HEAD));
+    ST_MSG_HEAD *head_ptr=(ST_MSG_HEAD*)buff;
+	//ST_MSG_COMMON *comminfo_ptr=(ST_MSG_COMMON*)(buff+sizeof(ST_MSG_HEAD));
+    //设置报文头
+    head_ptr->msgid=msgid;
+    head_ptr->data_len = sizeof(ST_MSG_COMMON);
+
+    return 0;
+}
+
+//@brief 设置报文: 连接信息
+int msglink_pkg_conninfo(unsigned char *buff, size_t buffsize, int bcc_id, int bu_no, char *group_no, char *errmsg)
+{
+    if( (NULL==buff)||(buffsize<sizeof(ST_MSG_HEAD)+sizeof(ST_MSG_COMMON)) )
+	{
+	    if(NULL!=errmsg) sprintf(errmsg, "msg消息缓存不足");
+        return -1;
+	}
+    memset(buff, 0, sizeof(ST_MSG_HEAD));
+    //ST_MSG_HEAD *head_ptr=(ST_MSG_HEAD*)buff;
+    ST_MSG_COMMON *comminfo_ptr=(ST_MSG_COMMON*)(buff+sizeof(ST_MSG_HEAD));
+
+    strncpy(comminfo_ptr->group_no, group_no, sizeof(comminfo_ptr->group_no));
+    comminfo_ptr->bcc_id=bcc_id;
+    comminfo_ptr->bu_no=bu_no;
+
+    return 0;
+}
+
+//@brief 设置报文: 控制信息
+int msglink_pkg_ctrlinfo(unsigned char *buff, size_t buffsize, bool first_flag, bool next_flag, bool ack_flag, bool push_flag, char *errmsg)
+{
+    return 0;
+}
+

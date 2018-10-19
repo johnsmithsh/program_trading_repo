@@ -8,7 +8,7 @@
 #include "os_thread.h"
 
 //定义线程服务状态,注:不是线程状态
-#define THREAD_SS_INIT      0 //初始化
+#define THREAD_SS_INIT      0 //初始化; 表示线程未创建
 #define THREAD_SS_STARTING  1 //启动中
 #define THREAD_SS_RUNNING   2 //运行中
 #define THREAD_SS_TERMINATE 3 //终止
@@ -54,6 +54,7 @@ class Thread_Base
        //@brief 停止线程
        int stop_thread()
        {
+    	     m_terminate_flag=true;
            terminate_service();//子进程实现,停止服务    
            set_thread_status(THREAD_SS_TERMINATE);//m_thread_status=THREAD_SS_TERMINATE;
            m_thread_id=MXX_INVALID_THREDID;
@@ -79,6 +80,8 @@ class Thread_Base
     //@brief 设置线程状态; 参数见宏定义THREAD_SS_XXX
     inline int get_thread_status() { return m_thread_status; }
 
+    //@brief 该线程是否已经调用stop_thread()
+    inline bool get_terminate_flag() { return m_terminate_flag; }
     //@brief 等待线程结束
     void join();   
  private:
@@ -87,11 +90,11 @@ class Thread_Base
  private:
        pthread_t m_thread_id;
        static int m_thread_count;//!< 线程计数器
+       bool m_terminate_flag;//!< if true, stop_thread() have been called, and thread is going to stop
      
  protected:
     char m_thread_name[64];//!< 线程名
     int m_thread_status;//!< 线程状态
-       //int m_service_status;//服务状态,注不是线程状态
 };
 
 

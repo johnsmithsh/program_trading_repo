@@ -27,7 +27,7 @@ void* thread_proc_posix(void *arg_ptr)
 //    memset(&m_thread_id, 0, sizeof(m_thread_id));
 //}
 
-Thread_Base::Thread_Base(const char *thread_name/*=""*/)
+Thread_Base::Thread_Base(const char *thread_name/*=""*/):m_terminate_flag(false),m_thread_status(THREAD_SS_INIT)
 {
     m_thread_id=MXX_INVALID_THREDID;
     memset(m_thread_name, 0, sizeof(m_thread_name));

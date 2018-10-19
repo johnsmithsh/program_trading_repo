@@ -42,12 +42,10 @@ int            svrhandle_init(SVRLINK_HANDLE svrlinkhandle);
 int            svrhandle_set_groupinfo(SVRLINK_HANDLE svrlinkhandle, const char *group_no, const char *group_desc, const char *group_version, int pid);
 int            svrhandle_set_linkinfo(SVRLINK_HANDLE  svrlinkhandle, unsigned int bcc_id, unsigned int bu_no);
 int            svrhandle_set_socket(SVRLINK_HANDLE    svrlinkhandle, int so);
-unsigned int   svrhandle_next_serial(SVRLINK_HANDLE    svrlinkhandle);
+unsigned int   svrhandle_next_serial(SVRLINK_HANDLE   svrlinkhandle);
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //组建报文 link msg assemble: lmasm
-//int lmasm_begin();
-//int lmasm_end();
 int lmasm_ack(ST_MSGLINK_BUFF  *linkmsg_ptr, SVRLINK_HANDLE svrlinkhandle,  ST_MSG_HEAD *msg_head_ptr, char if_succ, char *szMsg);
 //@连接请求
 int lmasm_connect(ST_MSGLINK_BUFF     *linkmsg_ptr, SVRLINK_HANDLE svrlinkhandle, char *ip, int port, char *errmsg);

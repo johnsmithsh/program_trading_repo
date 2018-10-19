@@ -19,10 +19,16 @@ CBuThread::CBuThread(const char *thread_name/*="recv_thread"*/)
    
    m_b_running=false;
    m_stop_flag=false;
+   
+   m_svr_handle = NULL;
 }
 //析构函数
 CBuThread::~CBuThread()
 {
+    if(NLL!=m_svr_handle)
+    {
+        svrhandle_close(m_svr_handle);
+    }
 }
 
 int CBuThread::init()
@@ -82,65 +88,25 @@ int CBuThread::loadini(const char *cfgfile)
 
 int CBuThread::listen_routine() 
 {
-  int rc;  
+  int rc;
+
+  CServerContext *ctx_app_instance=CServerContext::get_instance();
+  if(NULL==ctx_app_instance)
+  {
+      ERROR_MSG("ctx_app_instance==NULL");
+      return -1;
+  }
+  m_svr_handle=svrhandle_open();
+  if(NULL==m_svr_handle)
+  {
+      ERROR_MSG("创建服务句柄失败");
+      return -1;
+  }
+  //设置服务句柄信息
+  svrhandle_init(m_svr_handle);//初始化
+  svrhandle_set_groupinfo(m_svr_handle, ctx_app_instance->group_no, ctx_app_instance->m_group_desc, os_getpid);
+  //svrhandle_set_linkinfo(m_svr_handle, bcc_id, bu_no);
   
-  //启动监听端口
-  if((m_listen_so=socket(AF_INET, SOCK_STREAM, 0))<0)
-  {
-     FATAL_MSG("listen_thread: create socket  for server port error!");
-     return -4;
-  }
-
-  INFO_MSG("listen_thread: success to create socket server!\n");
-
-  struct sockaddr_in server_addr;
-  memset(&server_addr, 0, sizeof(server_addr));
-  server_addr.sin_family=AF_INET;
-  server_addr.sin_port=htons(m_lstn_port);
-  server_addr.sin_addr.s_addr=htonl(INADDR_ANY);
-  if(bind(m_listen_so, (struct sockaddr *)&server_addr, sizeof(server_addr))<0)
-  {
-     close(m_listen_so);
-     m_listen_so=-1;
-     FATAL_MSG("listen_thread: bind port[%d] failed!", m_lstn_port);
-     return -5;
-  }
-
-  INFO_MSG("listen_thread: success to bind server port[%d]!\n", m_lstn_port);
-
-  if(listen(m_listen_so, m_max_listen)<0)
-  {
-     close(m_listen_so);
-     m_listen_so=-1;
-     FATAL_MSG("listen_thread: listen(%d) failed!", m_lstn_port);
-     return -6;
-  }
-
-  INFO_MSG("listen_thread: sucess to listen server port\n");
-
-  //业务比较少,使用select即可
-  //设置socket读超时时间,感觉有点不靠谱
-  fd_set fdset;//
-  struct timeval tv;//!< 超时时间,如果accept不设置超时时间, 则一直阻塞,会收不到进程停止信号
-
-  INFO_MSG("listen_thread: success to add server socket to epoll monitor!\n");
-
-
-  //g_client_ptr = new ST_SockConnHandle[m_max_listen+1];//客户端连接
-  //if(NULL==g_client_ptr)
-  //{
-  //    close(fd_epoll);
-  //    close(fd_listen);
-  //    fd_epoll = -1;
-  //    fd_listen = -1;
-  //    FATAL_MSG("创建连接池失败!");
-  //    return -1005;
-  //}
-
-  //struct epoll_event events[MAX_EPOLL_SIZE];//监听最大事件数量
-  //int epoll_sig_interrpt_count=0;//epoll被signal中断次数
-  //bool conn_close_flag=false;//连接断开标记
-
   int errcode;
   char szMsg[256]={0};
   while(!m_stop_flag) 

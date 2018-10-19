@@ -52,6 +52,8 @@ class CBuThread : public Thread_Base
      
      bool m_b_running;//!< 表明服务是否在运行; true-在run循环中;false-退出run循环;
      bool m_stop_flag;//!< 服务停止命令标记; HEARTBEAT_STOP_TRUE-收到停止命令, 服务需要退出; HEARTBEAT_STOP_FALSE-没有收到停止命令,服务可以继续运行;
+     
+     SVRLINK_HANDLE m_svr_handle;
 };
 
 #endif
