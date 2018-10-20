@@ -2,9 +2,11 @@
 #include <string.h>
 
 #include "msg_assemble.h"
+#include "os_thread.h"
+#include "msg_link_function.h"
 
 //构建报文
-int lmasm_connect(ST_MSGLINK_BUFF * linkmsg_ptr, SVRLINK_HANDLE svrlinkhandle, char *ip, int port, char *errmsg)
+int lmasm_connect(ST_MSGLINK_BUFF * linkmsg_ptr, SVRLINK_HANDLE svrlinkhandle)
 {
     //ST_MSGLINK_BUFF linkmsg_ptr;
 
@@ -28,7 +30,7 @@ int lmasm_connect(ST_MSGLINK_BUFF * linkmsg_ptr, SVRLINK_HANDLE svrlinkhandle, c
 	return 0;
 }
 
-int lmasm_ans_connect(ST_MSGLINK_BUFF * linkmsg_ptr, SVRLINK_HANDLE svrlinkhandle, unsigned int bcc_id, unsigned int bu_no, char if_succ, const char *szmsg, char *errmsg)
+int lmasm_ans_connect(ST_MSGLINK_BUFF * linkmsg_ptr, SVRLINK_HANDLE svrlinkhandle, unsigned int bcc_id, unsigned int bu_no, char if_succ, const char *szmsg)
 {
 	//ST_MSGLINK_BUFF linkmsg_ptr;
 
@@ -49,8 +51,8 @@ int lmasm_ans_connect(ST_MSGLINK_BUFF * linkmsg_ptr, SVRLINK_HANDLE svrlinkhandl
 	//设置链接应答信息
 	MSG_ANS_CONN *body_ptr=(MSG_ANS_CONN*)linkmsg_ptr->data_buff;
 	memset(body_ptr, 0, sizeof(MSG_ANS_CONN));
-	body_ptr->bcc_id  = svr_link->link_info.bcc_id;
-	body_ptr->bu_no   = svr_link->link_info.bu_no;
+	body_ptr->bcc_id  = bcc_id;
+	body_ptr->bu_no   = bu_no;
 	body_ptr->if_succ = if_succ;//成功标记
 	strncpy(body_ptr->szmsg, szmsg, sizeof(body_ptr->szmsg)-1);
 
@@ -107,7 +109,7 @@ int lmasm_register_function(ST_MSGLINK_BUFF * linkmsg_ptr, SVRLINK_HANDLE svrlin
 	return 0;
 }
 
-int lmasm_ans_register_function(ST_MSGLINK_BUFF * linkmsg_ptr, SVRLINK_HANDLE svrlinkhandle, char if_succ, const char *szmsg, char *errmsg)
+int lmasm_ans_register_function(ST_MSGLINK_BUFF * linkmsg_ptr, SVRLINK_HANDLE svrlinkhandle, char if_succ, const char *szmsg)
 {
 	//ST_MSGLINK_BUFF linkmsg_ptr;
 
@@ -132,7 +134,7 @@ int lmasm_ans_register_function(ST_MSGLINK_BUFF * linkmsg_ptr, SVRLINK_HANDLE sv
 	return 0;
 }
 
-int lmasm_disconnect(ST_MSGLINK_BUFF * linkmsg_ptr, SVRLINK_HANDLE svrlinkhandle, char *errmsg)
+int lmasm_disconnect(ST_MSGLINK_BUFF * linkmsg_ptr, SVRLINK_HANDLE svrlinkhandle)
 {
 	//ST_MSGLINK_BUFF linkmsg_ptr;
 
@@ -157,7 +159,7 @@ int lmasm_disconnect(ST_MSGLINK_BUFF * linkmsg_ptr, SVRLINK_HANDLE svrlinkhandle
 	return 0;
 }
 
-int lmasm_ans_disconnection(ST_MSGLINK_BUFF * linkmsg_ptr, SVRLINK_HANDLE svrlinkhandle, char if_succ, const char *szmsg, char *errmsg)
+int lmasm_ans_disconnection(ST_MSGLINK_BUFF * linkmsg_ptr, SVRLINK_HANDLE svrlinkhandle, char if_succ, const char *szmsg)
 {
 	//ST_MSGLINK_BUFF linkmsg_ptr;
 
@@ -186,7 +188,7 @@ int lmasm_ans_disconnection(ST_MSGLINK_BUFF * linkmsg_ptr, SVRLINK_HANDLE svrlin
 }
 
 
-int lmasm_heatbeat(ST_MSGLINK_BUFF * linkmsg_ptr, SVRLINK_HANDLE svrlinkhandle, char *errmsg)
+int lmasm_heatbeat(ST_MSGLINK_BUFF * linkmsg_ptr, SVRLINK_HANDLE svrlinkhandle)
 {
 	//ST_MSGLINK_BUFF linkmsg_ptr;
 
@@ -206,7 +208,7 @@ int lmasm_heatbeat(ST_MSGLINK_BUFF * linkmsg_ptr, SVRLINK_HANDLE svrlinkhandle, 
 	return 0;
 }
 
-int lmasm_ans_heatbeat(ST_MSGLINK_BUFF * linkmsg_ptr, SVRLINK_HANDLE svrlinkhandle, char if_succ, const char *szmsg, char *errmsg)
+int lmasm_ans_heatbeat(ST_MSGLINK_BUFF * linkmsg_ptr, SVRLINK_HANDLE svrlinkhandle, char if_succ, const char *szmsg)
 {
 	//ST_MSGLINK_BUFF linkmsg_ptr;
 

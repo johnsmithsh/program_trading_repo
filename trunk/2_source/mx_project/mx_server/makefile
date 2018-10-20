@@ -47,7 +47,7 @@ COMMON_SOURCES:= common/os_path.cpp common/ConfigFile.cpp \
 				 common/netsocket/mxx_net_socket.cpp \
 				 public/msg_link_function.cpp \
 				 public/sock_frame.cpp \
-				 public/svr_link.cpp \
+				 public/svr_link.cpp public/msg_assemble.cpp \
                  $(LOG_SRCS)
 COMMON_OBJS:= $(COMMON_SOURCES:.cpp=.o)
 
