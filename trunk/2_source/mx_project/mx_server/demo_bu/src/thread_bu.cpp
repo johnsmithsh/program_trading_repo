@@ -89,6 +89,7 @@ int CBuThread::loadini(const char *cfgfile)
 int CBuThread::listen_routine() 
 {
   int rc;
+  char szMsg[256];
 
   CServerContext *ctx_app_instance=CServerContext::get_instance();
   if(NULL==ctx_app_instance)
@@ -107,6 +108,29 @@ int CBuThread::listen_routine()
   svrhandle_set_groupinfo(m_svr_handle, ctx_app_instance->group_no, ctx_app_instance->m_group_desc, os_getpid);
   //svrhandle_set_linkinfo(m_svr_handle, bcc_id, bu_no);
   
+  //连接控制中心
+  for(;;)
+  {
+      memset(szMsg, 0, sizeof(szMsg));
+      rc=svrlink_connect(m_svr_handle, m_bcc_ip, m_bcc_port, szMsg);
+      if(0==rc)
+      {
+          INFO_MSG("连接控制中心[%s:%d]成功; bcc_id=[], bu_no=[]", m_bcc_ip, m_bcc_port);
+          break;
+      }
+      //or
+      // 创建socket...
+      // setsocketopt...
+      // connect...
+      // m_svr_handle绑定socket
+      // 构建连接请求域...
+      // 发送连接请求域...
+      // 接收连接应答域...
+      // 设置bcc_id、bcc_no...
+      ERROR_MSG("连接控制中心失败![%s]", szMsg);
+  }
+  
+  int so=svrhandle_get_socket(m_svr_handle);
   int errcode;
   char szMsg[256]={0};
   while(!m_stop_flag) 
@@ -117,7 +141,7 @@ int CBuThread::listen_routine()
    
     //nfds=最大文件描述符+1
 	//accept需要读操作触发
-    rc=select(m_listen_so+1, &fdset, NULL, NULL, &tv);
+    rc=select(so+1, &fdset, NULL, NULL, &tv);
 	if(rc<0)
 	{
 	   errcode=errno;
@@ -136,42 +160,18 @@ int CBuThread::listen_routine()
 	}
 	//select 返回的是触发描述符个数,不过此处只有一个,也就不用检查了
 	
-	struct sockaddr_in cliaddr;//客户端地址;
-	socklen_t cliaddr_len = sizeof(cliaddr);
-	memset(&cliaddr, 0, sizeof(cliaddr));
-	int conn_fd = accept(m_listen_so, (struct sockaddr *)&cliaddr, &cliaddr_len);
-	if (conn_fd < 0) 
-	{
-	   errcode=errno;
-      ERROR_MSG("listen_thread: accept client link error! [%d][%s]", errcode, strerror(errcode));
-      continue;//return -1;//也不清楚该怎么处理了???
-    }
 	
-	//todo 查找可用连接吧!
-	
-	//todo 启动服务...
-	CServerContext *ctx_instance=CServerContext::get_instance();
-	if(NULL==ctx_instance)
-	{
-		ERROR_MSG("no server context,can not bing socket to bulinkthread");
-		close(conn_fd);
-		continue;
-	}
-
-	//将socket绑定到一个业务线程
-	rc=ctx_instance->bind_socket_to_bulinkthread(conn_fd, szMsg);
-	if(rc<0)
-	{
-		ERROR_MSG("bind socket to bulinkthread error! [%d] [%s]", rc, szMsg);
-		close(conn_fd);
-		continue;
-	}
 
   }//继续等待
 
-  //清除连接
-  close(m_listen_so);
-  m_listen_so=-1;
+  memset(szMsg, 0, sizeof(szMsg));
+  rc=svrlink_disconnect(m_svr_handle, szMsg);
+  //or
+  //close(socket);
+  INFO_MSG("断开与控制中心连接, rc=[%d], szMsg=[%s]", rc, szMsg);
+  
+  svrhandle_close(m_svr_handle);
+
 
   return 0;
 }
