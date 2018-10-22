@@ -60,7 +60,7 @@ int lmasm_ans_connect(ST_MSGLINK_BUFF * linkmsg_ptr, SVRLINK_HANDLE svrlinkhandl
 }
 
 //@brief 发送ack消息
-int lmasm_ack(ST_MSGLINK_BUFF * linkmsg_ptr, SVRLINK_HANDLE svrlinkhandle,  ST_MSG_HEAD *msg_head_ptr, char if_succ, char *szMsg)
+int lmasm_ack(ST_MSGLINK_BUFF * linkmsg_ptr, SVRLINK_HANDLE svrlinkhandle,  ST_MSG_HEAD *msg_head_ptr, char if_succ, const char *szMsg)
 {
 	//ST_MSGLINK_BUFF linkmsg_ptr;
 
