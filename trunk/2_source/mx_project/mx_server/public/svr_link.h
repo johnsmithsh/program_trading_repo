@@ -59,6 +59,7 @@ ST_SVR_LINK_HANDLE *svrhandle_to_linkinfo(SVRLINK_HANDLE    svrlinkhandle);
 #define MSG_SOCK_RETRY    -106 //超过重试次数
 #define MSG_SOCK_HALFPACK -107 //发送或接收半个数据包
 
+#define EINVLID_ARG       -9003 //参数无效
 /**
  * @brief 发送数据; 要么发送一个完整数据包,要么返回错误; 发送半个数据包也返回错误
  *        阻塞方式发送数据;

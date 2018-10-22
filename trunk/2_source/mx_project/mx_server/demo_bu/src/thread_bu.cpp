@@ -58,7 +58,7 @@ int CBuThread::loadini(const char *cfgfile)
         return -1;
     }
     
-    char serve_section[]="sourth_server";
+    char serve_section[]="BalanceCtrlCenter";
     m_lstn_port   =cfg.read_int(serve_section,  "backend_listen_port", 9999);//!< 服务监听端口
     m_max_listen  =cfg.read_int(serve_section,  "backend_max_conn",    1024); //!< 最大连接数
     m_recv_timeout=cfg.read_int(serve_section,  "backend_timeout",     1000); //!< 接收超时,单位毫秒

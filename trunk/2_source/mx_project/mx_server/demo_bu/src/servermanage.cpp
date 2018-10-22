@@ -1,5 +1,7 @@
 #include "ConfigFile.h"
 #include "logfile.h"
+
+#include "server_cfg_info.h"
 #include "servermanage.h"
 #include "servercontext.h"
 
@@ -11,6 +13,8 @@ CServerManage::CServerManage()
 CServerManage::~CServerManage()
 {
     stop_service();
+    
+    CServerContext::delete_instance();
 }
 
 //@brief 初始化服务进程上线文信息
@@ -39,12 +43,16 @@ int CServerManage::start_service()
 {
     int rc=0;
 
-      //启动心跳线程
-    rc=start_heartbeat_thread(SERVER_CFG_FILENAME);//
+    CServerContext *ctx_instance=CServerContext::get_instance();
+	if(NULL==ctx_instance)
+		return -1;
+    int rc=ctx_instance->m_bu_thread.load_ini(CONFIG_FILENAME);
     if(rc<0)
-        return -1;
-    
-    rc=start_bulisten_thread(SERVER_CFG_FILENAME);
+    {
+        ERROR_MSG("业务线程加载配置信息失败");
+        return -2;
+    }
+    ctx_instance->m_bu_thread.start_thread();
 
     return 0;
 }
@@ -57,8 +65,12 @@ int CServerManage::start_service()
  **/
 int CServerManage::stop_service()
 {
-	 stop_bulisten_thread();
-    stop_heartbeat_thread();
-    CServerContext::delete_instance();
+	CServerContext *ctx_instance=CServerContext::create_instance();
+	if(NULL==ctx_instance)
+		return -1;
+
+    ctx_instance->m_bu_thread.stop_thread();
+    
+    
     return 0;
 }

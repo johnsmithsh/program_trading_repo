@@ -70,6 +70,7 @@ int            svrhandle_get_socket(SVRLINK_HANDLE   svrlinkhandle)
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #include <errno.h>
 #include <sys/socket.h>
+#include <arpa/inet.h>
 /**
  * @brief 发送数据; 要么发送一个完整数据包,要么返回错误; 发送半个数据包也返回错误
  *        阻塞方式发送数据;
@@ -330,19 +331,47 @@ int msglink_recvdata(int so, unsigned char *buff, size_t datalen, int *recv_len,
 int svrlink_connect(SVRLINK_HANDLE svrlinkhandle,  char *ip, int port, char *errmsg)
 {
     ST_MSGLINK_BUFF msg_buff;
-	
-	//int so;
-	//todo 连接tcp服务器...
-	
 
+    int rc=0;
 	//构造连接请求报文
 	ST_SVR_LINK_HANDLE *svr_link=(ST_SVR_LINK_HANDLE*)svrlinkhandle;
+	if(svr_link->so < 0)
+	{
+		int so;
+		//连接tcp服务器...
+		if((NULL==ip)||('\0'==*ip))
+		{
+			strcpy(errmsg, "参数ip无效");
+			return EINVLID_ARG;
+		}
+		if(port<=0)
+		{
+			strcpy(errmsg, "参数port无效");
+			return EINVLID_ARG;
+		}
+
+		struct sockaddr_in addr;
+		int addrlen = sizeof(struct sockaddr_in);
+		memset(&addr, 0, sizeof(addr));
+		addr.sin_family=AF_INET;
+		addr.sin_port=htons(port);
+		addr.sin_addr.s_addr = inet_addr(ip);
+
+		int rc=connect(so, (struct sockaddr*)&addr, addrlen);
+		if(rc<0)
+		{
+			sprintf(errmsg, "连接业务控制中心服务器[%s:%d]失败!", ip, port);
+			return rc;
+		}
+
+		svr_link->so = so;
+	}
 	memset(&msg_buff, 0, sizeof(ST_MSGLINK_BUFF));
 	lmasm_connect(&msg_buff, svr_link);
 
 	int process_len=0;
 	int total_len=msg_buff.head.data_len+sizeof(ST_MSG_HEAD);
-	int rc=msglink_send(svr_link->so, (unsigned char *)&msg_buff, total_len, &process_len, errmsg);
+	rc=msglink_send(svr_link->so, (unsigned char *)&msg_buff, total_len, &process_len, errmsg);
 	if(rc<0)
 	{
 		return rc;
