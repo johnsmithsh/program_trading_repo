@@ -185,7 +185,7 @@ int svrlink_listen(SVRLINK_HANDLE link_handle, char *ip, int port, int bcc_id);
 int svrlink_connect(SVRLINK_HANDLE svrlinkhandle,  char *ip, int port, char *errmsg);
 int svrlink_ans_connect(SVRLINK_HANDLE svrlinkhandle, unsigned int bcc_id, unsigned int bu_no, char if_succ, const char *szmsg, char *errmsg);
 
-int svrlink_ack(SVRLINK_HANDLE svrlinkhandle, ST_MSG_HEAD *msg_head_ptr, char if_succ, char *szMsg);
+int svrlink_ack(SVRLINK_HANDLE svrlinkhandle, ST_MSG_HEAD *msg_head_ptr, char if_succ, const char *szMsg, char *errmsg);
 
 // @brief 断开连接 MSGTYPE_DISCONN
 int svrlink_disconnect(SVRLINK_HANDLE svrlinkhandle, char *errmsg);

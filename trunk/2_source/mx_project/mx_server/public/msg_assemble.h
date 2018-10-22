@@ -8,7 +8,7 @@
 #include "svr_link.h" //提供SVRLINK_HANDLE
 
 //组建报文 link msg assemble: lmasm
-int lmasm_ack(ST_MSGLINK_BUFF  *linkmsg_ptr, SVRLINK_HANDLE svrlinkhandle,  ST_MSG_HEAD *msg_head_ptr, char if_succ);
+int lmasm_ack(ST_MSGLINK_BUFF  *linkmsg_ptr, SVRLINK_HANDLE svrlinkhandle,  ST_MSG_HEAD *msg_head_ptr, char if_succ, const char *szmsg);
 //@连接请求
 int lmasm_connect(ST_MSGLINK_BUFF     *linkmsg_ptr, SVRLINK_HANDLE svrlinkhandle);
 int lmasm_ans_connect(ST_MSGLINK_BUFF *linkmsg_ptr, SVRLINK_HANDLE svrlinkhandle, unsigned int bcc_id, unsigned int bu_no, char if_succ, const char *szmsg);

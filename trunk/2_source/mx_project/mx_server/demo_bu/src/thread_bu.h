@@ -39,6 +39,9 @@ class CBuThread : public Thread_Base
      virtual int terminate_service();//!< 线程退出命令
    public:
      int loadini(const char *cfgfile);
+     int recv_msg(ST_MSGLINK_BUFF *msg_buff);
+     int send_msg(ST_MSGLINK_BUFF *msg_buff);
+     int process_socket_close();
    private:
      //接收例程
      int listen_routine();

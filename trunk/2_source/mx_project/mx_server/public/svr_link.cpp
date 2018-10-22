@@ -2,11 +2,14 @@
 #include <string.h>
 #include <stdio.h>
 
+
+#include "os_thread.h"
 #include "svr_link.h"
 //#include "msg_link_define.h"
 #include "msg_link_function.h"
 
-#include "os_thread.h"
+#include "msg_assemble.h"
+
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //连接句柄
@@ -89,7 +92,7 @@ int msglink_send(int so, const unsigned char *buff, size_t data_len, int *send_l
    int rc=0;
    int count = 0;//发送计数
    int retry_count = 0;//重试次数
-	for(;count<data_len;)
+	for(;count<(int)data_len;)
 	{
 		rc = send(so, buff+count, data_len-count, 0);
 		if(0==rc)
@@ -328,25 +331,74 @@ int svrlink_connect(SVRLINK_HANDLE svrlinkhandle,  char *ip, int port, char *err
 {
     ST_MSGLINK_BUFF msg_buff;
 	
-	int so;
+	//int so;
 	//todo 连接tcp服务器...
 	
+
 	//构造连接请求报文
 	ST_SVR_LINK_HANDLE *svr_link=(ST_SVR_LINK_HANDLE*)svrlinkhandle;
+	memset(&msg_buff, 0, sizeof(ST_MSGLINK_BUFF));
+	lmasm_connect(&msg_buff, svr_link);
 
-	ST_MSG_HEAD *head_ptr= &msg_buff.head;
-	//设置报文头
-	msglink_head_init(head_ptr);
-	msglink_head_set_msgtypeinfo(head_ptr, MSGTYPE_CONN, MASKHEAD_REQ);//连接应答报文
+	int process_len=0;
+	int total_len=msg_buff.head.data_len+sizeof(ST_MSG_HEAD);
+	int rc=msglink_send(svr_link->so, (unsigned char *)&msg_buff, total_len, &process_len, errmsg);
+	if(rc<0)
+	{
+		return rc;
+	}
+	if(process_len!=total_len)
+	{
+		sprintf(errmsg, "send connect request to balance control center no full pack!total_len=[%d]!=[%d]", total_len, process_len);
+		return MSG_SOCK_HALFPACK;
+	}
 
-	MSG_REQ_CONN *body_ptr=(MSG_REQ_CONN*)(&msg_buff.data_buff);
-	memset(body_ptr, 0, sizeof(MSG_REQ_CONN));
-	strncpy(body_ptr->group_no,   svr_link->link_info.group_no,      sizeof(body_ptr->group_no)-1);//!< 设置业务组号
-	strncpy(body_ptr->group_desc, svr_link->link_info.group_desc,    sizeof(body_ptr->group_desc)-1);//!< 设置业务组描述信息
-	//strncpy(body_ptr->version,    svr_link->link_info.group_version, sizeof(body_ptr->version));//!< 设置版本信息
-	body_ptr->proc_id = (unsigned long)os_getpid();
-	//body_ptr->prog_name,
-	body_ptr->mode = 0;
+
+	//接收应答
+	memset(&msg_buff, 0, sizeof(msg_buff));
+	process_len=0;
+	rc=msglink_recv(svr_link->so, (unsigned char *)&msg_buff, sizeof(ST_MSGLINK_BUFF), &process_len, errmsg);
+	if(rc<0)
+	{
+		return rc;
+	}
+	if(process_len<sizeof(ST_MSG_HEAD))
+	{
+		sprintf(errmsg, "recv connect response no full pack!total_len=[%d]",  process_len);
+		return MSG_SOCK_HALFPACK;
+	}
+	else
+	{
+		total_len =msg_buff.head.data_len+sizeof(ST_MSG_HEAD);
+		if(process_len!=total_len)
+		{
+			sprintf(errmsg, "recv connect response no full pack! total_len=[%d]!=[%d]", total_len, process_len);
+			return MSG_SOCK_HALFPACK;
+		}
+	}
+
+	MSG_ANS_CONN *body_ptr = (MSG_ANS_CONN *)msg_buff.data_buff;
+	if(C_YES!=body_ptr->if_succ)
+	{
+		strcpy(errmsg, body_ptr->szmsg);
+		return -1;
+	}
+
+	svrhandle_set_linkinfo(svrlinkhandle, body_ptr->bcc_id, body_ptr->bu_no);
+	return 0;
+	//ST_MSG_HEAD *head_ptr= &msg_buff.head;
+	////设置报文头
+	//msglink_head_init(head_ptr);
+	//msglink_head_set_msgtypeinfo(head_ptr, MSGTYPE_CONN, MASKHEAD_REQ);//连接应答报文
+    //
+	//MSG_REQ_CONN *body_ptr=(MSG_REQ_CONN*)(&msg_buff.data_buff);
+	//memset(body_ptr, 0, sizeof(MSG_REQ_CONN));
+	//strncpy(body_ptr->group_no,   svr_link->link_info.group_no,      sizeof(body_ptr->group_no)-1);//!< 设置业务组号
+	//strncpy(body_ptr->group_desc, svr_link->link_info.group_desc,    sizeof(body_ptr->group_desc)-1);//!< 设置业务组描述信息
+	////strncpy(body_ptr->version,    svr_link->link_info.group_version, sizeof(body_ptr->version));//!< 设置版本信息
+	//body_ptr->proc_id = (unsigned long)os_getpid();
+	////body_ptr->prog_name,
+	//body_ptr->mode = 0;
 
 	/*
 	//发送连接请求
@@ -392,52 +444,81 @@ int svrlink_ans_connect(SVRLINK_HANDLE svrlinkhandle, unsigned int bcc_id, unsig
 	ST_SVR_LINK_HANDLE *svr_link=(ST_SVR_LINK_HANDLE*)svrlinkhandle;
 
 	//设置报文头
-	ST_MSG_HEAD *head_ptr= &msg_buff.head;
-	msglink_head_init(head_ptr);
-	msglink_head_set_msgtypeinfo(head_ptr, MSGTYPE_CONN, MASKHEAD_RSP);//连接应答报文
-	head_ptr->data_len = sizeof(ST_MSG_COMMON)+sizeof(MSG_ANS_CONN);
+	//ST_MSG_HEAD *head_ptr= &msg_buff.head;
+	//msglink_head_init(head_ptr);
+	//msglink_head_set_msgtypeinfo(head_ptr, MSGTYPE_CONN, MASKHEAD_RSP);//连接应答报文
+	//head_ptr->data_len = sizeof(ST_MSG_COMMON)+sizeof(MSG_ANS_CONN);
+    //
+	////设置common信息
+	//ST_MSG_COMMON *msg_common_ptr = &msg_buff.commoninfo;
+	//memset(msg_common_ptr, 0, sizeof(ST_MSG_COMMON));
+	//msglink_common_set_conninfo(msg_common_ptr, svr_link->link_info.bcc_id, svr_link->link_info.bu_no, svr_link->link_info.group_no);
+	//msglink_common_set_ctrlinfo(msg_common_ptr, true, false, false, false);
+    //
+	////设置链接应答信息
+	//MSG_ANS_CONN *body_ptr=(MSG_ANS_CONN*)msg_buff.data_buff;
+	//memset(body_ptr, 0, sizeof(MSG_ANS_CONN));
+	//body_ptr->bcc_id = svr_link->link_info.bcc_id;
+	//body_ptr->bu_no  = svr_link->link_info.bu_no;
+	//body_ptr->if_succ = if_succ;//成功标记
+	//strncpy(body_ptr->szmsg, szmsg, sizeof(body_ptr->szmsg)-1);
 
-	//设置common信息
-	ST_MSG_COMMON *msg_common_ptr = &msg_buff.commoninfo;
-	memset(msg_common_ptr, 0, sizeof(ST_MSG_COMMON));
-	msglink_common_set_conninfo(msg_common_ptr, svr_link->link_info.bcc_id, svr_link->link_info.bu_no, svr_link->link_info.group_no);
-	msglink_common_set_ctrlinfo(msg_common_ptr, true, false, false, false);
+	lmasm_ans_connect(&msg_buff, svrlinkhandle, bcc_id, bu_no, if_succ, szmsg);
 
-	//设置链接应答信息
-	MSG_ANS_CONN *body_ptr=(MSG_ANS_CONN*)msg_buff.data_buff;
-	memset(body_ptr, 0, sizeof(MSG_ANS_CONN));
-	body_ptr->bcc_id = svr_link->link_info.bcc_id;
-	body_ptr->bu_no  = svr_link->link_info.bu_no;
-	body_ptr->if_succ = if_succ;//成功标记
-	strncpy(body_ptr->szmsg, szmsg, sizeof(body_ptr->szmsg)-1);
+	int process_len=0;
+	int total_len=msg_buff.head.data_len+sizeof(ST_MSG_HEAD);
+	int rc=msglink_send(svr_link->so, (unsigned char *)&msg_buff, total_len, &process_len, errmsg);
+	if(rc<0)
+	{
+		return rc;
+	}
+	if(process_len!=total_len)
+	{
+		sprintf(errmsg, "send connect response failed! !total_len=[%d]!=[%d]", total_len, process_len);
+		return MSG_SOCK_HALFPACK;
+	}
 
-	//todo send...
-   return -1;
+   return 0;
 }
 
 //@brief 发送ack消息
-int svrlink_ack(SVRLINK_HANDLE svrlinkhandle, ST_MSG_HEAD *msg_head_ptr, char if_succ, char *szMsg)
+int svrlink_ack(SVRLINK_HANDLE svrlinkhandle, ST_MSG_HEAD *msg_head_ptr, char if_succ, const char *szMsg, char *errmsg)
 {
 	ST_MSGLINK_BUFF msg_buff;
 
 	ST_SVR_LINK_HANDLE *svr_link=(ST_SVR_LINK_HANDLE*)svrlinkhandle;
 
-	//设置报文头
-	ST_MSG_HEAD *head_ptr= &msg_buff.head;
-	msglink_head_set_msgtypeinfo(head_ptr, msg_head_ptr->msgid, MASKHEAD_ACK);//ack报文
-	head_ptr->data_len = sizeof(ST_MSG_COMMON)+sizeof(MSG_ACK);
+	////设置报文头
+	//ST_MSG_HEAD *head_ptr= &msg_buff.head;
+	//msglink_head_set_msgtypeinfo(head_ptr, msg_head_ptr->msgid, MASKHEAD_ACK);//ack报文
+	//head_ptr->data_len = sizeof(ST_MSG_COMMON)+sizeof(MSG_ACK);
+	//
+	////设置common信息
+	//ST_MSG_COMMON *msg_common_ptr = &msg_buff.commoninfo;
+	//memset(msg_common_ptr, 0, sizeof(ST_MSG_COMMON));
+	//msglink_common_set_conninfo(msg_common_ptr, svr_link->link_info.bcc_id, svr_link->link_info.bu_no, svr_link->link_info.group_no);
+	//msglink_common_set_ctrlinfo(msg_common_ptr, true, false, false, false);
+	//
+	//MSG_ACK *body_ptr=(MSG_ACK*)msg_buff.data_buff;
+	//body_ptr->if_succ = if_succ;//成功标记
+	//strncpy(body_ptr->szmsg, szMsg, sizeof(body_ptr->szmsg)-1);
+	//
 
-	//设置common信息
-	ST_MSG_COMMON *msg_common_ptr = &msg_buff.commoninfo;
-	memset(msg_common_ptr, 0, sizeof(ST_MSG_COMMON));
-	msglink_common_set_conninfo(msg_common_ptr, svr_link->link_info.bcc_id, svr_link->link_info.bu_no, svr_link->link_info.group_no);
-	msglink_common_set_ctrlinfo(msg_common_ptr, true, false, false, false);
+	lmasm_ack(&msg_buff, svrlinkhandle, msg_head_ptr, if_succ, szMsg);
 
-	MSG_ACK *body_ptr=(MSG_ACK*)msg_buff.data_buff;
-	body_ptr->if_succ = if_succ;//成功标记
-	strncpy(body_ptr->szmsg, szMsg, sizeof(body_ptr->szmsg)-1);
+	int process_len=0;
+	int total_len=msg_buff.head.data_len+sizeof(ST_MSG_HEAD);
+	int rc=msglink_send(svr_link->so, (unsigned char *)&msg_buff, total_len, &process_len, errmsg);
+	if(rc<0)
+	{
+		return rc;
+	}
+	if(process_len!=total_len)
+	{
+		sprintf(errmsg, "send ack failed! !total_len=[%d]!=[%d]", total_len, process_len);
+		return MSG_SOCK_HALFPACK;
+	}
 
-	//todo send..
 	return 0;
 }
 
@@ -461,8 +542,19 @@ int svrlink_register_function(SVRLINK_HANDLE svrlinkhandle, char *register_info,
 	int rc=msglink_pkg_data_append((unsigned char *)&msg_buff, sizeof(msg_buff), (unsigned char *)register_info,  len, errmsg);
 	if(rc<0)
 		return rc;
-	head_ptr->data_len += len;
 
+	int process_len=0;
+	int total_len=msg_buff.head.data_len+sizeof(ST_MSG_HEAD);
+	rc=msglink_send(svr_link->so, (unsigned char *)&msg_buff, total_len, &process_len, errmsg);
+	if(rc<0)
+	{
+		return rc;
+	}
+	if(process_len!=total_len)
+	{
+		sprintf(errmsg, "send register failed! !total_len=[%d]!=[%d]", total_len, process_len);
+		return MSG_SOCK_HALFPACK;
+	}
 	//int rc=lmasm_req_regfunc_init(&msg_buff, sizeof(msg_buff));
 	//if(rc<0)//统计请求包失败
 	//{
@@ -485,23 +577,34 @@ int svrlink_ans_register_function(SVRLINK_HANDLE svrlinkhandle, char if_succ, co
 
 	ST_SVR_LINK_HANDLE *svr_link=(ST_SVR_LINK_HANDLE*)svrlinkhandle;
 
-	//设置报文头
-	ST_MSG_HEAD *head_ptr= &msg_buff.head;
-	msglink_head_set_msgtypeinfo(head_ptr, MSGTYPE_REG_FUNC, MASKHEAD_RSP);//消息类型+请求/应答/ack标记
-	head_ptr->data_len = sizeof(ST_MSG_COMMON)+sizeof(MSG_ANS_REGFUNC);
+	////设置报文头
+	//ST_MSG_HEAD *head_ptr= &msg_buff.head;
+	//msglink_head_set_msgtypeinfo(head_ptr, MSGTYPE_REG_FUNC, MASKHEAD_RSP);//消息类型+请求/应答/ack标记
+	//head_ptr->data_len = sizeof(ST_MSG_COMMON)+sizeof(MSG_ANS_REGFUNC);
+	//
+	////设置common信息
+	//ST_MSG_COMMON *msg_common_ptr = &msg_buff.commoninfo;
+	//memset(msg_common_ptr, 0, sizeof(ST_MSG_COMMON));
+	//msglink_common_set_conninfo(msg_common_ptr, svr_link->link_info.bcc_id, svr_link->link_info.bu_no, svr_link->link_info.group_no);
+	//msglink_common_set_ctrlinfo(msg_common_ptr, true, false, false, false);
+    //
+	//MSG_ANS_REGFUNC *body_ptr = (MSG_ANS_REGFUNC *)msg_buff.data_buff;
+	//body_ptr->if_succ = if_succ;
+	//strncpy(body_ptr->szmsg, szmsg, sizeof(body_ptr->szmsg)-1);
 
-	//设置common信息
-	ST_MSG_COMMON *msg_common_ptr = &msg_buff.commoninfo;
-	memset(msg_common_ptr, 0, sizeof(ST_MSG_COMMON));
-	msglink_common_set_conninfo(msg_common_ptr, svr_link->link_info.bcc_id, svr_link->link_info.bu_no, svr_link->link_info.group_no);
-	msglink_common_set_ctrlinfo(msg_common_ptr, true, false, false, false);
-
-
-	MSG_ANS_REGFUNC *body_ptr = (MSG_ANS_REGFUNC *)msg_buff.data_buff;
-	body_ptr->if_succ = if_succ;
-	strncpy(body_ptr->szmsg, szmsg, sizeof(body_ptr->szmsg)-1);
-
-	//todo send...
+	lmasm_ans_register_function(&msg_buff, svrlinkhandle, if_succ, szmsg);
+	int process_len=0;
+	int total_len=msg_buff.head.data_len+sizeof(ST_MSG_HEAD);
+	int rc=msglink_send(svr_link->so, (unsigned char *)&msg_buff, total_len, &process_len, errmsg);
+	if(rc<0)
+	{
+		return rc;
+	}
+	if(process_len!=total_len)
+	{
+		sprintf(errmsg, "send ans_register failed! !total_len=[%d]!=[%d]", total_len, process_len);
+		return MSG_SOCK_HALFPACK;
+	}
 	return 0;
 }
 
@@ -512,52 +615,64 @@ int svrlink_disconnect(SVRLINK_HANDLE svrlinkhandle, char *errmsg)
 
 	ST_SVR_LINK_HANDLE *svr_link=(ST_SVR_LINK_HANDLE*)svrlinkhandle;
 
-	//设置报文头
-	ST_MSG_HEAD *head_ptr= &msg_buff.head;
-	msglink_head_set_msgtypeinfo(head_ptr, MSGTYPE_DISCONN, MASKHEAD_REQ);//消息类型+请求/应答/ack标记
-	head_ptr->data_len = sizeof(ST_MSG_COMMON)+sizeof(MSG_REQ_DISCONN);
+	////设置报文头
+	//ST_MSG_HEAD *head_ptr= &msg_buff.head;
+	//msglink_head_set_msgtypeinfo(head_ptr, MSGTYPE_DISCONN, MASKHEAD_REQ);//消息类型+请求/应答/ack标记
+	//head_ptr->data_len = sizeof(ST_MSG_COMMON)+sizeof(MSG_REQ_DISCONN);
+    //
+	////设置common信息
+	//ST_MSG_COMMON *msg_common_ptr = &msg_buff.commoninfo;
+	//memset(msg_common_ptr, 0, sizeof(ST_MSG_COMMON));
+	//msglink_common_set_conninfo(msg_common_ptr, svr_link->link_info.bcc_id, svr_link->link_info.bu_no, svr_link->link_info.group_no);
+	//msglink_common_set_ctrlinfo(msg_common_ptr, true, false, false, false);
+    //
+	//MSG_REQ_DISCONN *body_ptr = (MSG_REQ_DISCONN*)msg_buff.data_buff;
+	//body_ptr->bcc_id = svr_link->link_info.bcc_id;
+	//body_ptr->bu_no  = svr_link->link_info.bu_no;
+	//strncpy(body_ptr->group_no, svr_link->link_info.group_no, sizeof(body_ptr->group_no)-1);
 
-	//设置common信息
-	ST_MSG_COMMON *msg_common_ptr = &msg_buff.commoninfo;
-	memset(msg_common_ptr, 0, sizeof(ST_MSG_COMMON));
-	msglink_common_set_conninfo(msg_common_ptr, svr_link->link_info.bcc_id, svr_link->link_info.bu_no, svr_link->link_info.group_no);
-	msglink_common_set_ctrlinfo(msg_common_ptr, true, false, false, false);
+	lmasm_disconnect(&msg_buff, svrlinkhandle);
+	int process_len=0;
+	int total_len=msg_buff.head.data_len+sizeof(ST_MSG_HEAD);
+	int rc=msglink_send(svr_link->so, (unsigned char *)&msg_buff, total_len, &process_len, errmsg);
+	if(rc<0)
+	{
+		return rc;
+	}
+	if(process_len!=total_len)
+	{
+		sprintf(errmsg, "send ans_register failed! !total_len=[%d]!=[%d]", total_len, process_len);
+		return MSG_SOCK_HALFPACK;
+	}
 
-	MSG_REQ_DISCONN *body_ptr = (MSG_REQ_DISCONN*)msg_buff.data_buff;
-	body_ptr->bcc_id = svr_link->link_info.bcc_id;
-	body_ptr->bu_no  = svr_link->link_info.bu_no;
-	strncpy(body_ptr->group_no, svr_link->link_info.group_no, sizeof(body_ptr->group_no)-1);
-
-	//todo send...
 
 	return 0;
 }
 
 int svrlink_ans_disconnection(SVRLINK_HANDLE svrlinkhandle, char if_succ, const char *szmsg, char *errmsg)
 {
-	ST_MSGLINK_BUFF msg_buff;
+	//ST_MSGLINK_BUFF msg_buff;
+	//ST_SVR_LINK_HANDLE *svr_link=(ST_SVR_LINK_HANDLE*)svrlinkhandle;
 
-	ST_SVR_LINK_HANDLE *svr_link=(ST_SVR_LINK_HANDLE*)svrlinkhandle;
-
-	//设置报文头
-	ST_MSG_HEAD *head_ptr= &msg_buff.head;
-	msglink_head_set_msgtypeinfo(head_ptr, MSGTYPE_REG_FUNC, MASKHEAD_RSP);//消息类型+请求/应答/ack标记
-	head_ptr->data_len = sizeof(ST_MSG_COMMON)+sizeof(MSG_ANS_DISCONN);
-
-	//设置common信息
-	ST_MSG_COMMON *msg_common_ptr = &msg_buff.commoninfo;
-	memset(msg_common_ptr, 0, sizeof(ST_MSG_COMMON));
-	msglink_common_set_conninfo(msg_common_ptr, svr_link->link_info.bcc_id, svr_link->link_info.bu_no, svr_link->link_info.group_no);
-	msglink_common_set_ctrlinfo(msg_common_ptr, true, false, false, false);
-
-
-	MSG_ANS_DISCONN *body_ptr = (MSG_ANS_DISCONN *)msg_buff.data_buff;
-	body_ptr->bcc_id = svr_link->link_info.bcc_id;
-	body_ptr->bu_no  = svr_link->link_info.bu_no;
-
-	body_ptr->if_succ = if_succ;
-	strncpy(body_ptr->szmsg, szmsg, sizeof(body_ptr->szmsg)-1);
-
+	////设置报文头
+	//ST_MSG_HEAD *head_ptr= &msg_buff.head;
+	//msglink_head_set_msgtypeinfo(head_ptr, MSGTYPE_REG_FUNC, MASKHEAD_RSP);//消息类型+请求/应答/ack标记
+	//head_ptr->data_len = sizeof(ST_MSG_COMMON)+sizeof(MSG_ANS_DISCONN);
+	//
+	////设置common信息
+	//ST_MSG_COMMON *msg_common_ptr = &msg_buff.commoninfo;
+	//memset(msg_common_ptr, 0, sizeof(ST_MSG_COMMON));
+	//msglink_common_set_conninfo(msg_common_ptr, svr_link->link_info.bcc_id, svr_link->link_info.bu_no, svr_link->link_info.group_no);
+	//msglink_common_set_ctrlinfo(msg_common_ptr, true, false, false, false);
+	//
+	//
+	//MSG_ANS_DISCONN *body_ptr = (MSG_ANS_DISCONN *)msg_buff.data_buff;
+	//body_ptr->bcc_id = svr_link->link_info.bcc_id;
+	//body_ptr->bu_no  = svr_link->link_info.bu_no;
+	//
+	//body_ptr->if_succ = if_succ;
+	//strncpy(body_ptr->szmsg, szmsg, sizeof(body_ptr->szmsg)-1);
+	//
 	//todo send...
 	return 0;
 }
@@ -569,18 +684,30 @@ int svrlink_heatbeat(SVRLINK_HANDLE svrlinkhandle, char *errmsg)
 
 	ST_SVR_LINK_HANDLE *svr_link=(ST_SVR_LINK_HANDLE*)svrlinkhandle;
 
-	//设置报文头
-	ST_MSG_HEAD *head_ptr= &msg_buff.head;
-	msglink_head_set_msgtypeinfo(head_ptr, MSGTYPE_HEARTBEAT, MASKHEAD_REQ);//消息类型+请求/应答/ack标记
-	head_ptr->data_len = sizeof(ST_MSG_COMMON);
+	////设置报文头
+	//ST_MSG_HEAD *head_ptr= &msg_buff.head;
+	//msglink_head_set_msgtypeinfo(head_ptr, MSGTYPE_HEARTBEAT, MASKHEAD_REQ);//消息类型+请求/应答/ack标记
+	//head_ptr->data_len = sizeof(ST_MSG_COMMON);
+	//
+	////设置common信息
+	//ST_MSG_COMMON *msg_common_ptr = &msg_buff.commoninfo;
+	//memset(msg_common_ptr, 0, sizeof(ST_MSG_COMMON));
+	//msglink_common_set_conninfo(msg_common_ptr, svr_link->link_info.bcc_id, svr_link->link_info.bu_no, svr_link->link_info.group_no);
+	//msglink_common_set_ctrlinfo(msg_common_ptr, true, false, false, false);
 
-	//设置common信息
-	ST_MSG_COMMON *msg_common_ptr = &msg_buff.commoninfo;
-	memset(msg_common_ptr, 0, sizeof(ST_MSG_COMMON));
-	msglink_common_set_conninfo(msg_common_ptr, svr_link->link_info.bcc_id, svr_link->link_info.bu_no, svr_link->link_info.group_no);
-	msglink_common_set_ctrlinfo(msg_common_ptr, true, false, false, false);
-
-	//todo send...
+	lmasm_heatbeat(&msg_buff, svr_link);
+	int process_len=0;
+	int total_len=msg_buff.head.data_len+sizeof(ST_MSG_HEAD);
+	int rc=msglink_send(svr_link->so, (unsigned char *) &msg_buff, total_len, &process_len, errmsg);
+	if(rc<0)
+	{
+		return rc;
+	}
+	if(process_len!=total_len)
+	{
+		sprintf(errmsg, "send ans_register failed! !total_len=[%d]!=[%d]", total_len, process_len);
+		return MSG_SOCK_HALFPACK;
+	}
 
 	return 0;
 }
@@ -591,22 +718,35 @@ int svrlink_ans_heatbeat(SVRLINK_HANDLE svrlinkhandle, char if_succ, const char 
 
 	ST_SVR_LINK_HANDLE *svr_link=(ST_SVR_LINK_HANDLE*)svrlinkhandle;
 
-	//设置报文头
-	ST_MSG_HEAD *head_ptr= &msg_buff.head;
-	msglink_head_set_msgtypeinfo(head_ptr, MSGTYPE_HEARTBEAT, MASKHEAD_RSP);//消息类型+请求/应答/ack标记
-	head_ptr->data_len = sizeof(ST_MSG_COMMON)+sizeof(MSG_RSP);
+	////设置报文头
+	//ST_MSG_HEAD *head_ptr= &msg_buff.head;
+	//msglink_head_set_msgtypeinfo(head_ptr, MSGTYPE_HEARTBEAT, MASKHEAD_RSP);//消息类型+请求/应答/ack标记
+	//head_ptr->data_len = sizeof(ST_MSG_COMMON)+sizeof(MSG_RSP);
+	//
+	////设置common信息
+	//ST_MSG_COMMON *msg_common_ptr = &msg_buff.commoninfo;
+	//memset(msg_common_ptr, 0, sizeof(ST_MSG_COMMON));
+	//msglink_common_set_conninfo(msg_common_ptr, svr_link->link_info.bcc_id, svr_link->link_info.bu_no, svr_link->link_info.group_no);
+	//msglink_common_set_ctrlinfo(msg_common_ptr, true, false, false, false);
+    //
+	//MSG_RSP *body_ptr = (MSG_RSP *)msg_buff.data_buff;
+	//body_ptr->if_succ = if_succ;
+	//strncpy(body_ptr->szmsg, szmsg, sizeof(body_ptr->szmsg)-1);
 
-	//设置common信息
-	ST_MSG_COMMON *msg_common_ptr = &msg_buff.commoninfo;
-	memset(msg_common_ptr, 0, sizeof(ST_MSG_COMMON));
-	msglink_common_set_conninfo(msg_common_ptr, svr_link->link_info.bcc_id, svr_link->link_info.bu_no, svr_link->link_info.group_no);
-	msglink_common_set_ctrlinfo(msg_common_ptr, true, false, false, false);
+	lmasm_ans_heatbeat(&msg_buff, svrlinkhandle, if_succ, szmsg);
 
+	int process_len=0;
+	int total_len=msg_buff.head.data_len+sizeof(ST_MSG_HEAD);
+	int rc=msglink_send(svr_link->so, (unsigned char *)&msg_buff, total_len, &process_len, errmsg);
+	if(rc<0)
+	{
+		return rc;
+	}
+	if(process_len!=total_len)
+	{
+		sprintf(errmsg, "send ans_register failed! !total_len=[%d]!=[%d]", total_len, process_len);
+		return MSG_SOCK_HALFPACK;
+	}
 
-	MSG_RSP *body_ptr = (MSG_RSP *)msg_buff.data_buff;
-	body_ptr->if_succ = if_succ;
-	strncpy(body_ptr->szmsg, szmsg, sizeof(body_ptr->szmsg)-1);
-
-	//todo send...
 	return 0;
 }

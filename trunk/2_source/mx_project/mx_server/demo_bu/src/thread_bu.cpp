@@ -86,6 +86,68 @@ int CBuThread::loadini(const char *cfgfile)
     return 0;   
 }
 
+int CBuThread::recv_msg(ST_MSGLINK_BUFF *msg_buff)
+{
+	 if(NULL==msg_buff) return -1;
+    char szmsg[255]={0};
+    int data_len=0;
+    int so=svrhandle_get_socket(m_svr_handle);
+    if(so<0)
+        return -2;
+    int rc=msglink_recv(so, (unsigned char *)msg_buff, sizeof(msg_buff), &data_len, szmsg);
+    if(rc<0)//接收错误
+    {
+    	ERROR_MSG("msglink_recv failed; [%d] [%s]", rc, szmsg);
+    	if(MSG_SOCK_CLOSE==rc)//接收过程中socket关闭
+    	{
+    		// 既然socket关闭了,那么该线程自动释放;数据直接丢弃
+    		WARN_MSG("bulinkthread: socket close");
+    		process_socket_close();
+    	}
+    	return -1;
+    }
+
+    if(data_len<(int)(sizeof(ST_MSG_HEAD)+msg_buff->head.data_len))
+    {
+    	ERROR_MSG("msglink_recv error; no entire msg package");
+    	return -2;
+    }
+
+	return 0;
+}
+
+int CBuThread::send_msg(ST_MSGLINK_BUFF *msg_buff)
+{
+	if(NULL==msg_buff) return -1;
+	int sended_len=0;
+	int total_len = msg_buff->head.data_len+sizeof(ST_MSG_HEAD);
+	char szMsg[255]={0};
+    int so=svrhandle_get_socket(m_svr_handle);
+    if(so<0)
+        return -2;
+    
+	int rc=msglink_send(so, (unsigned char *)msg_buff, total_len, &sended_len, szMsg);
+
+	if(rc<0)//接收错误
+	{
+		ERROR_MSG("msglink_send failed; [%d] [%s]", rc, szMsg);
+		if(MSG_SOCK_CLOSE==rc)//接收过程中socket关闭
+	    {
+			//todo 既然socket关闭了,那么该线程自动释放;数据直接丢弃
+			WARN_MSG("bulinkthread: socket close");
+			process_socket_close();
+	    }
+	   return -1;
+	}
+
+	if(sended_len!=total_len)
+	{
+		ERROR_MSG("msglink_send error; 发送数据[%d]<[[%d]", sended_len, total_len);
+		return -2;
+	}
+	return 0;
+}
+
 int CBuThread::listen_routine() 
 {
   int rc;
@@ -97,7 +159,9 @@ int CBuThread::listen_routine()
       ERROR_MSG("ctx_app_instance==NULL");
       return -1;
   }
-  m_svr_handle=svrhandle_open();
+  
+  if(NULL==m_svr_handle)
+      m_svr_handle=svrhandle_open();
   if(NULL==m_svr_handle)
   {
       ERROR_MSG("创建服务句柄失败");
@@ -128,14 +192,37 @@ int CBuThread::listen_routine()
       // 接收连接应答域...
       // 设置bcc_id、bcc_no...
       ERROR_MSG("连接控制中心失败![%s]", szMsg);
+      os_thread_msleep(5000);
   }
   
+  //注册业务函数
+  for(int i=0; i<20; ++i)
+  {
+      memset(szMsg, 0, sizeof(szMsg));
+      MSG_REQ_REGFUNC func_ifo;
+      memset(&func_info, 0, sizeof(func_ifo));
+      
+      int func_no=854000+i;
+      sprintf(func_ifo.bu_func_id, "%d", func_no);  //!< 业务进程支持的业务id
+      sprintf(func_ifo.bu_func_desc, "功能函数%03d", i);//!< 业务功能说明
+      sprintf(func_ifo.bu_name, "demo_bu");     //!< 业务名
+      
+      rc=svrlink_register_function(m_svr_handle, &func_ifo, sizeof(func_ifo), szMsg);
+      if(rc<0)
+      {
+          svrhandle_close(m_svr_handle);
+          ERROR_MSG("注册业务功能[%d]失败![%s]", func_no, szMsg);
+          return -1;
+      }
+      
+  }
   int so=svrhandle_get_socket(m_svr_handle);
   int errcode;
   char szMsg[256]={0};
   while(!m_stop_flag) 
   {
     FD_ZERO(&fdset);
+    FD_SET(so, &fdset);
 	tv.tv_sec = 5;//!< 超时时间5秒; 懒得读取配置文件
 	tv.tv_usec=0;
    
